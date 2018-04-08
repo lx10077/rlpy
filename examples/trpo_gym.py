@@ -2,16 +2,17 @@ import argparse
 import gym
 import os
 import sys
-import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import *
 from models.mlp_policy import DiagnormalPolicy, Policy, DiscretePolicy
 from models.mlp_critic import Value, ValueFunction
 from torch.autograd import Variable
-from core.trpo import trpo_step, TrpoUpdater
+from core.trpo import TrpoUpdater
 from core.common import estimate_advantages
 from core.agent import ActorCriticAgent
+from core.trainer import ActorCriticTrainer
+from core.evaluator import ActorCriticTester
 
 
 parser = argparse.ArgumentParser(description='PyTorch TRPO example')
@@ -39,11 +40,13 @@ parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
 parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per TRPO update (default: 2048)')
-parser.add_argument('--max-iter-num', type=int, default=1000, metavar='N',
+parser.add_argument('--max-iter-num', type=int, default=650, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 10)')
 parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
+                    help="interval between saving model (default: 0, means don't save)")
+parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -63,8 +66,8 @@ running_state = ZFilter((state_dim,), clip=5)
 if is_disc_action:
     policy_net = DiscretePolicy(state_dim, action_dim)
 else:
-    policy_net = Policy(state_dim, action_dim, log_std=args.log_std)
-value_net = Value(state_dim)
+    policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+value_net = ValueFunction(state_dim)
 
 if use_gpu and args.gpu:
     policy_net = policy_net.cuda()
@@ -72,10 +75,11 @@ if use_gpu and args.gpu:
 
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent(env_factory, policy_net, value_net, cfg,
-                         running_state=running_state)
-
+agent = ActorCriticAgent("Trpo", env_factory, policy_net, value_net, cfg, running_state=running_state)
 trpo = TrpoUpdater(policy_net, value_net, args.max_kl, args.damping, args.l2_reg, nsteps=10, use_fim=False)
+evaluator = ActorCriticTester(agent, cfg)
+trainer = ActorCriticTrainer(agent, trpo, cfg, evaluator)
+trainer.start()
 
 def update_params(batch):
     states = torch.from_numpy(np.stack(batch.state))
@@ -122,4 +126,4 @@ def main_loop():
                 policy_net.cuda(), value_net.cuda()
 
 
-main_loop()
+# main_loop()

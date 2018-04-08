@@ -6,9 +6,15 @@ import math
 import time
 
 
+# ====================================================================================== #
+# Agents for actor critic methods
+# ====================================================================================== #
 class ActorCriticAgent(object):
-    def __init__(self, env_factory, policy, value, cfg,
+    def __init__(self, name, env_factory, policy, value, cfg, distinguish=None,
                  custom_reward=None, running_state=None, tensor_type=torch.DoubleTensor):
+        self.id = cfg["env_name"] + "-" + name
+        if distinguish:
+            self.id = self.id + "-" + str(distinguish)
         self.env_factory = env_factory
         self.policy = policy
         self.value = value
@@ -87,6 +93,8 @@ class ActorCriticAgent(object):
         batch = dict()
         batch["states"] = states
         batch["actions"] = actions
+        batch["rewards"] = rewards
+        batch["masks"] = masks
         batch["advantages"] = advantages
         batch["value_targets"] = value_targets
         return batch

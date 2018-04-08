@@ -6,20 +6,20 @@ import pickle
 # Configuration
 # ====================================================================================== #
 class Cfg(object):
-    def __init__(self, name="default", config_dir=None, parse=None, init_dict=None, **kwargs):
+    def __init__(self, name="default", config_file=None, parse=None, init_dict=None, **kwargs):
         """A class to handle all configurations
         """
         self.name = name
-        self.config_dir = config_dir
+        self.config_file = config_file
         self.config = {}
         self.config.update(kwargs)
         if init_dict is not None:
-            self.config.update(init_dict)
+            self.read_dict(init_dict)
         if parse is not None:
             self.read_parse(parse)
 
-    def set_dir(self, config_dir):
-        self.config_dir = config_dir
+    def set_saved_file(self, config_file):
+        self.config_file = config_file
 
     def keys(self):
         return self.config.keys()
@@ -28,38 +28,47 @@ class Cfg(object):
         parse_dict = parse.__dict__
         self.config.update(parse_dict)
 
-    def save_config(self):
+    def read_dict(self, input_dict):
+        self.config.update(input_dict)
+
+    def save_config(self, file=None):
         try:
-            pickle.dump(self.config, self.config_dir)
+            if file is None:
+                file = self.config_file
+            with open(file, "wb") as f:
+                pickle.dump(self.config, f)
         except Exception as e:
-            print("Fail to save the file {}".format(self.config_dir))
+            print("[Error] Fail to save the file {}.".format(file))
             raise Exception(e)
 
-    def load_config(self):
+    def load_config(self, file=None):
         try:
-            self.config = pickle.load(self.config_dir)
+            if file is None:
+                file = self.config_file
+            with open(file, "wb") as f:
+                self.config = pickle.load(f)
         except Exception as e:
-            print("Fail to open the file {}".format(self.config_dir))
+            print("[Error] Fail to open the file {}.".format(file))
             raise Exception(e)
 
     def __getitem__(self, item):
         try:
             return self.config[item]
         except Exception as e:
-            print("No such item in config!")
+            print("[Error] No such item {} in config.".format(str(item)))
             raise Exception(e)
 
     def __setitem__(self, key, value):
         if key in self.config:
-            print("{} has been in the config. Overwrite it now.".format(key))
+            print("[Warning] {} has been in the config. Overwrite it now.".format(key))
         self.config[key] = value
 
     def __delitem__(self, key):
         try:
             del self.config[key]
         except Exception as e:
-            print("Fail to delete the key {}".format(key))
-            raise Exception(e)
+            print("[Error] Fail to delete the key {}.".format(key))
+            print(Exception(e))
 
     def __len__(self):
         return len(self.config)

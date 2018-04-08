@@ -1,7 +1,8 @@
 ######################
 # ignored folders
 ######################
-/__pycache__
+/__pycache__/
+/assets/
 
 
 
