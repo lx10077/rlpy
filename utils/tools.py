@@ -9,7 +9,7 @@ def assets_dir():
     new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../assets/'))
     if not os.path.exists(new_dir):
         os.makedirs(new_dir)
-        print("[Dir] Create asset_dir in" + new_dir)
+        print("[Dir] Create asset_dir in " + new_dir)
     return new_dir
 
 
@@ -17,7 +17,7 @@ def set_dir(prefix, name):
     new_dir = os.path.join(prefix, name)
     if not os.path.exists(new_dir):
         os.makedirs(new_dir)
-        print("[Dir] Create asset_dir in" + new_dir)
+        print("[Dir] Create asset_dir in " + new_dir)
     return new_dir
 
 

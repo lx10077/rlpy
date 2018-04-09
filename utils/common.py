@@ -175,8 +175,8 @@ class ZFilter(object):
 
     def load(self, save_dict):
         if "Zfilter" in save_dict:
-            print("Load Zfilter...")
+            print("[Load] Load Zfilter...")
             self.set_state(save_dict["Zfilter"])
         if "RuningStat" in save_dict:
-            print("Load RunningStat...")
+            print("[Load] Load RunningStat...")
             self.rs.set_state(save_dict["RuningStat"])

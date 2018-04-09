@@ -5,11 +5,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import *
-from models.mlp_policy import DiagnormalPolicy, Policy, DiscretePolicy
-from models.mlp_critic import Value, ValueFunction
-from torch.autograd import Variable
+from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
+from models.mlp_critic import ValueFunction
 from core.trpo import TrpoUpdater
-from core.common import estimate_advantages
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticTester
@@ -40,11 +38,11 @@ parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
 parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per TRPO update (default: 2048)')
-parser.add_argument('--max-iter-num', type=int, default=650, metavar='N',
+parser.add_argument('--max-iter-num', type=int, default=700, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 10)')
-parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
+parser.add_argument('--save-model-interval', type=int, default=100, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
@@ -80,50 +78,3 @@ trpo = TrpoUpdater(policy_net, value_net, args.max_kl, args.damping, args.l2_reg
 evaluator = ActorCriticTester(agent, cfg)
 trainer = ActorCriticTrainer(agent, trpo, cfg, evaluator)
 trainer.start()
-
-def update_params(batch):
-    states = torch.from_numpy(np.stack(batch.state))
-    actions = torch.from_numpy(np.stack(batch.action))
-    rewards = torch.from_numpy(np.stack(batch.reward))
-    masks = torch.from_numpy(np.stack(batch.mask).astype(np.float64))
-    if use_gpu:
-        states, actions, rewards, masks = states.cuda(), actions.cuda(), rewards.cuda(), masks.cuda()
-    values = value_net(Variable(states, volatile=True)).data
-
-    """get advantage estimation from the trajectories"""
-    advantages, returns = estimate_advantages(rewards, masks, values, args.gamma, args.tau, use_gpu)
-
-    batchs = {}
-    batchs["states"] = states
-    batchs["actions"] = actions
-    batchs["advantages"] = advantages
-    batchs["value_targets"] = returns
-
-    """perform TRPO update"""
-    # trpo_step(policy_net, value_net, states, actions, returns, advantages, args.max_kl, args.damping, args.l2_reg)
-    log = {}
-    log = trpo(batchs, log)
-
-
-def main_loop():
-    for i_iter in range(args.max_iter_num):
-        """generate multiple trajectories that reach the minimum batch_size"""
-        batch, log = agent.collect_samples(args.min_batch_size)
-        t0 = time.time()
-        update_params(batch)
-        t1 = time.time()
-
-        if i_iter % args.log_interval == 0:
-            print('{}\tT_sample {:.4f}\tT_update {:.4f}\tR_min {:.2f}\tR_max {:.2f}\tR_avg {:.2f}'.format(
-                i_iter, log['sample_time'], t1-t0, log['min_reward'], log['max_reward'], log['avg_reward']))
-
-        if args.save_model_interval > 0 and (i_iter+1) % args.save_model_interval == 0:
-            if use_gpu:
-                policy_net.cpu(), value_net.cpu()
-            pickle.dump((policy_net, value_net, running_state),
-                        open(os.path.join(assets_dir(), 'learned_models/{}_trpo.p'.format(args.env_name)), 'wb'))
-            if use_gpu:
-                policy_net.cuda(), value_net.cuda()
-
-
-# main_loop()

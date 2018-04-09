@@ -1,6 +1,5 @@
 from torch.autograd import Variable
 from utils.tools import *
-from tensorboardX import SummaryWriter
 
 
 class ActorCriticTester(object):
@@ -8,6 +7,7 @@ class ActorCriticTester(object):
         self.agent = agent
         self.cfg = cfg
         self.asset_dir = assets_dir()
+        self.eval_dir = set_dir(self.asset_dir, "evaluations")
 
         # get some components from the agent
         self.env_factory = self.agent.env_factory
@@ -22,45 +22,34 @@ class ActorCriticTester(object):
         self.eval_rewards = [np.zeros(self.num_epsd)]  # elements are numpy array
         self.best_avg_rewards = -np.inf
 
-        # parameters for records
-        self.record_iters = []
-        self.record_rewards = []
-        self.record_custom_rewards = []
-        self.writer = SummaryWriter(self.asset_dir + "/" + self.id)
-
-    def record(self, iter_i, timestep_log):
-        self.record_iters.append(iter_i)
-        self.record_rewards.append(timestep_log["avg_reward"])
-        if "avg_c_reward" in timestep_log:
-            self.record_custom_rewards.append(timestep_log["avg_c_reward"])
-
-    def save_records(self):
-        file = self.asset_dir + "records/" + self.id
-        self.record_rewards = np.array(self.record_rewards)
-        if len(self.record_custom_rewards) > 0:
-            self.record_custom_rewards = np.array(self.record_custom_rewards)
-            np.savez(file, rewards=self.record_custom_rewards,
-                     custom_rewards=self.record_custom_rewards)
-        else:
-            np.savez(file, rewards=self.record_rewards)
-
-    def monitor(self, iter_i, timestep_log):
-        log_plot(self.writer, timestep_log, iter_i)
+    def start(self, num_epsd=None):
+        if num_epsd is None:
+            num_epsd = self.num_epsd
+        self._check()
+        self._eval(num_epsd)
+        self.save_evals()
 
     def eval(self, iter_i):
-        avg_rewards, eval_rewards = self._eval()
+        avg_rewards, eval_rewards = self._eval(self.num_epsd)
         self.eval_iters.append(iter_i)
         self.eval_rewards.append(eval_rewards)
         title = "Test Rewards of " + self.id
-        population_plot(self.eval_iters, self.eval_rewards, title, self.asset_dir)
+        population_plot(self.eval_iters, self.eval_rewards, title, self.eval_dir)
 
-    def _eval(self):
+    def save_evals(self):
+        print("[Save] Saving evaluation results...")
+        file = self.eval_dir + "/" + self.id
+        self.eval_iters = np.array(self.eval_iters)
+        self.eval_rewards = np.array(self.eval_rewards)
+        np.savez(file, eval_iters=self.eval_iters, eval_rewards=self.eval_rewards)
+
+    def _eval(self, num_epsd):
         eval_env = self.env_factory(3333)
-        total_rewards = np.zeros(self.num_epsd)
+        total_rewards = np.zeros(num_epsd)
         epsd_idx = 0
         epsd_iters = 0
         state = eval_env.reset()
-        while epsd_idx < self.num_epsd:
+        while epsd_idx < num_epsd:
             if self.agent.running_state is not None:
                 state = self.agent.running_state(state, update=False)
 
@@ -72,9 +61,9 @@ class ActorCriticTester(object):
             state = next_state
 
             if done or epsd_iters >= self.max_epsd_iters:
-                print('>>> Eval: [%2d/%d], rewards: %s' % (epsd_idx + 1, self.num_epsd, total_rewards[epsd_idx]))
+                print('>>> Eval: [%2d/%d], rewards: %s' % (epsd_idx + 1, num_epsd, total_rewards[epsd_idx]))
 
-                if epsd_idx < self.num_epsd - 1:  # leave last reset to next run
+                if epsd_idx < num_epsd - 1:  # leave last reset to next run
                     state = eval_env.reset()
 
                 epsd_idx += 1
@@ -85,3 +74,7 @@ class ActorCriticTester(object):
         eval_env.close()
         del eval_env
         return avg_rewards, total_rewards
+
+    def _check(self):
+        if self.agent.running_state is None:
+            print("[Warning] No running states.")

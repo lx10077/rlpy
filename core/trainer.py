@@ -1,5 +1,6 @@
 from utils.tools import *
 from utils.torch import *
+from tensorboardX import SummaryWriter
 import pickle
 
 
@@ -11,10 +12,13 @@ class ActorCriticTrainer(object):
         self.cfg = cfg
         self.asset_dir = assets_dir()
         self.model_dir = set_dir(self.asset_dir, "learned_models")
-        self.config_dir = set_dir(self.asset_dir, "config")
+        self.config_dir = set_dir(self.asset_dir, "configs")
+        self.record_dir = set_dir(self.asset_dir, "records")
+        self.monitor_dir = set_dir(self.asset_dir, "monitors")
         self.id = self.agent.id
         self.cfg.set_saved_file(self.config_dir + "/" + self.id + "-config.pkl")
         self.cfg.save_config()
+        self.writer = SummaryWriter(self.monitor_dir + "/" + self.id)
 
         self.gpu = cfg["gpu"] if "gpu" in cfg else False
         self.tau = cfg["tau"]
@@ -25,15 +29,18 @@ class ActorCriticTrainer(object):
         self.log_interval = cfg["log_interval"]
         self.save_model_interval = cfg["save_model_interval"]
         self.eval_model_interval = cfg["eval_model_interval"]
-        self.begin_i = -1
+        self.begin_i = 0
         self.meta_info = {}
+        self.record_iters = []
+        self.record_rewards = []
+        self.record_custom_rewards = []
 
     def setup(self, file=None):
         self.load_model(file=file)
         self.load_meta_info()
 
     def start(self):
-        for iter_i in range(self.begin_i + 1, self.max_iter_num):
+        for iter_i in range(self.begin_i, self.max_iter_num):
             batch, log = self.agent.collect_samples(self.min_batch_size)
             batch = self.agent.batch2tensor(batch)
             t0 = time.time()
@@ -41,30 +48,48 @@ class ActorCriticTrainer(object):
             t1 = time.time()
             log["update_time"] = t1 - t0
 
-            if self.evaluator is not None:
-                self.evaluator.record(iter_i, log)
-                self.evaluator.monitor(iter_i, log)
+            self.record(iter_i, log)
+            self.monitor(iter_i, log)
 
             if iter_i % self.log_interval == 0:
                 print('{}\tT_sample {:.4f}\tT_update {:.4f}\tR_min {:.2f}\tR_max {:.2f}\tR_avg {:.2f}'.format(
                     iter_i, log['sample_time'], t1 - t0, log['min_reward'], log['max_reward'], log['avg_reward']))
 
             if self.save_model_interval > 0 and (iter_i + 1) % self.save_model_interval == 0:
-                self.save_model()
+                self.save_model(iter_i)
 
             if self.evaluator is not None and self.eval_model_interval > 0 \
                     and (iter_i + 1) % self.eval_model_interval == 0:
                 log = self.evaluator.eval(iter_i)
                 self.meta_info["test_ %d" % iter_i] = log
 
-        print("[Finish] Complete training: {:d} -> {:d}.".format(self.begin_i + 1, self.max_iter_num))
-        if self.evaluator:
-            self.evaluator.save_records()
+        print("[Finish] Complete training: {:d} -> {:d}.".format(self.begin_i, self.max_iter_num))
+        self.save_records()
         self.save_meta_info()
+
+    def monitor(self, iter_i, timestep_log):
+        log_plot(self.writer, timestep_log, iter_i)
+
+    def record(self, iter_i, timestep_log):
+        self.record_iters.append(iter_i)
+        self.record_rewards.append(timestep_log["avg_reward"])
+        if "avg_c_reward" in timestep_log:
+            self.record_custom_rewards.append(timestep_log["avg_c_reward"])
+
+    def save_records(self):
+        print("[Save] Saving records...")
+        file = self.record_dir + "/" + self.id + "-record"
+        self.record_rewards = np.array(self.record_rewards)
+        if len(self.record_custom_rewards) > 0:
+            self.record_custom_rewards = np.array(self.record_custom_rewards)
+            np.savez(file, rewards=self.record_custom_rewards,
+                     custom_rewards=self.record_custom_rewards)
+        else:
+            np.savez(file, rewards=self.record_rewards)
 
     def save_meta_info(self):
         print("[Save] Saving the meta information...")
-        file = self.model_dir + '/' + self.id + "-metadata.pkl"
+        file = self.record_dir + '/' + self.id + "-metadata.pkl"
         try:
             with open(file, "wb") as f:
                 pickle.dump(self.meta_info, f)
@@ -75,7 +100,7 @@ class ActorCriticTrainer(object):
 
     def load_meta_info(self):
         print("[Load] Saving the meta information...")
-        file = self.model_dir + '/' + self.id + "-metadata.pkl"
+        file = self.record_dir + '/' + self.id + "-metadata.pkl"
         try:
             with open(file, "wr") as f:
                 self.meta_info = pickle.load(f)
@@ -84,7 +109,7 @@ class ActorCriticTrainer(object):
             print(Exception(e))
             pass
 
-    def save_model(self, file=None):
+    def save_model(self, iter_i=-1, file=None):
         print("[Save] Saving the learned model...")
         if file is None:
             file = os.path.join(self.model_dir, self.id + ".pth")
@@ -93,8 +118,8 @@ class ActorCriticTrainer(object):
             save_dict[model] = net.state_dict()
         if self.agent.running_state is not None:
             save_dict["running_state"] = self.agent.running_state.save_dict()
-        if self.begin_i > 0:
-            save_dict["begin_i"] = self.begin_i
+        if iter_i > 0:
+            save_dict["begin_i"] = iter_i
         try:
             torch.save(save_dict, file)
         except Exception as e:
