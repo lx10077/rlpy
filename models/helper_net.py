@@ -90,6 +90,54 @@ def build_noisy_fc(dims, sigma0, returnlst=False, activate=nn.ReLU()):
 
 
 # ====================================================================================== #
+# Initialization
+# ====================================================================================== #
+def normalized_columns_init(weights, std=1.0):
+    out = torch.randn(weights.size())
+    out *= std / torch.sqrt(out.pow(2).sum(1, keepdim=True))
+    return out
+
+
+def weights_init_uniform(m):
+    """Initialize the weights uniformly within the interval [−b,b],
+    where
+        b = sqrt(6 / (f_in + f_out)) for sigmoid units and
+        b = 4 * sqrt(6 / (f_in + f_out)) for tangent units.
+    """
+    if isinstance(m, nn.Conv2d):
+        weight_shape = list(m.weight.data.size())
+        fan_in = np.prod(weight_shape[1:4])
+        fan_out = np.prod(weight_shape[2:4]) * weight_shape[0]
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+        m.weight.data.uniform_(-w_bound, w_bound)
+        m.bias.data.fill_(0)
+    elif isinstance(m, nn.Linear):
+        weight_shape = list(m.weight.data.size())
+        fan_in = weight_shape[1]
+        fan_out = weight_shape[0]
+        w_bound = np.sqrt(6. / (fan_in + fan_out))
+        m.weight.data.uniform_(-w_bound, w_bound)
+        m.bias.data.fill_(0)
+
+
+def weights_init_normal(m):
+    """Initialize the weights in the way of a zero-mean Gaussian with std,
+    where
+        std = sqrt(2 / # kernel parameters) for conv map and
+        std = sqrt(2 / (f_in + f_out)) for linear map.
+    """
+    if isinstance(m, nn.Conv2d):
+        n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        m.weight.data.normal_(0, np.sqrt(2. / n))
+    elif isinstance(m, nn.Linear):
+        size = m.weight.size()
+        m.weight.data.normal_(0, np.sqrt(2. / size[0] + size[1]))
+    elif isinstance(m, nn.BatchNorm2d):
+        m.weight.data.fill_(1)
+        m.bias.data.zero_()
+
+
+# ====================================================================================== #
 # Useful designed layers
 # ====================================================================================== #
 class Flatten(nn.Module):

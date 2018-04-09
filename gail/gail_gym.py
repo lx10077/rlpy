@@ -10,7 +10,7 @@ from utils import *
 from models.mlp_policy import Policy
 from models.mlp_critic import Value
 from models.mlp_policy_disc import DiscretePolicy
-from models.mlp_discriminator import Discriminator
+from models.mlp_net import Discriminator
 from torch.autograd import Variable
 from torch import nn
 from core.ppo import ppo_step

@@ -178,4 +178,3 @@ def compute_flat_grad(output, inputs, filter_input_ids=set(), retain_graph=False
     for param in params:
         param.grad = None
     return grads
-

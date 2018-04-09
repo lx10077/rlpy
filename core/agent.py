@@ -1,5 +1,5 @@
 import multiprocessing
-from utils.replay_memory import NoLimitSequentialMemory
+from utils.memory import NoLimitSequentialMemory
 from utils.torch import *
 from utils.tools import *
 import math
@@ -11,7 +11,8 @@ import time
 # ====================================================================================== #
 class ActorCriticAgent(object):
     def __init__(self, name, env_factory, policy, value, cfg, distinguish=None,
-                 custom_reward=None, running_state=None, tensor_type=torch.DoubleTensor):
+                 custom_reward=None, running_state=None, tensor_type=torch.DoubleTensor,
+                 collect_way=collect_samples):
         self.id = cfg["env_name"] + "-" + name
         if distinguish:
             self.id = self.id + "-" + str(distinguish)
@@ -23,6 +24,7 @@ class ActorCriticAgent(object):
         self.custom_reward = custom_reward
         self.running_state = running_state
         self.tensor = tensor_type
+        self.collect_way = collect_way
 
         self.tau = cfg["tau"]
         self.gamma = cfg["gamma"]
@@ -46,14 +48,14 @@ class ActorCriticAgent(object):
         for i in range(self.num_threads-1):
             worker_args = (i+1, queue, self.env_list[i + 1], self.policy, self.custom_reward, self.mean_action,
                            self.tensor, False, self.running_state, False, thread_batch_size)
-            workers.append(multiprocessing.Process(target=collect_samples, args=worker_args))
+            workers.append(multiprocessing.Process(target=self.collect_way, args=worker_args))
         for worker in workers:
             worker.start()
 
-        memory, log = collect_samples(0, None, self.env_list[0], self.policy, self.custom_reward, self.mean_action,
-                                      self.tensor, self.render, self.running_state, True, thread_batch_size)
+        memory, log = self.collect_way(0, None, self.env_list[0], self.policy, self.custom_reward, self.mean_action,
+                                       self.tensor, self.render, self.running_state, True, thread_batch_size)
 
-        worker_logs = [None] * len(workers)
+        worker_logs = [{}] * len(workers)
         worker_memories = [None] * len(workers)
         for _ in workers:
             pid, worker_memory, worker_log = queue.get()
@@ -105,7 +107,6 @@ class ActorCriticAgent(object):
 # ====================================================================================== #
 def collect_samples(pid, queue, env, policy, custom_reward, mean_action,
                     tensor, render, running_state, update_rs, min_batch_size):
-    torch.randn(pid, )
     log = dict()
     memory = NoLimitSequentialMemory()
     num_steps = 0
