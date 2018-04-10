@@ -11,8 +11,7 @@ import time
 # ====================================================================================== #
 class ActorCriticAgent(object):
     def __init__(self, name, env_factory, policy, value, cfg, distinguish=None,
-                 custom_reward=None, running_state=None, tensor_type=torch.DoubleTensor,
-                 collect_way=collect_samples):
+                 custom_reward=None, running_state=None, tensor_type=torch.DoubleTensor):
         self.id = cfg["env_name"] + "-" + name
         if distinguish:
             self.id = self.id + "-" + str(distinguish)
@@ -24,7 +23,7 @@ class ActorCriticAgent(object):
         self.custom_reward = custom_reward
         self.running_state = running_state
         self.tensor = tensor_type
-        self.collect_way = collect_way
+        self.collect_way = collect_samples
 
         self.tau = cfg["tau"]
         self.gamma = cfg["gamma"]

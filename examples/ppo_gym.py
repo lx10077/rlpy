@@ -2,23 +2,20 @@ import argparse
 import gym
 import os
 import sys
-import pickle
-import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import *
 from models.mlp_policy import DiagnormalPolicy, Policy, DiscretePolicy
-from models.mlp_critic import Value
+from models.mlp_critic import Value, ValueFunction
 from torch.autograd import Variable
-from core.ppo import ppo_step
+from core.ppo import ppo_step, ClipPpoUpdater
 from core.common import estimate_advantages
 from core.agent import ActorCriticAgent
-
-Tensor = DoubleTensor
-torch.set_default_tensor_type('torch.DoubleTensor')
+from core.trainer import ActorCriticTrainer
+from core.evaluator import ActorCriticTester
 
 parser = argparse.ArgumentParser(description='PyTorch PPO example')
-parser.add_argument('--env-name', default="Hopper-v2", metavar='G',
+parser.add_argument('--env-name', default="HalfCheetah-v2", metavar='G',
                     help='name of the environment to run')
 parser.add_argument('--model-path', metavar='G',
                     help='path of pre-trained model')
@@ -34,21 +31,31 @@ parser.add_argument('--l2-reg', type=float, default=1e-3, metavar='G',
                     help='l2 regularization regression (default: 1e-3)')
 parser.add_argument('--learning-rate', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 3e-4)')
+parser.add_argument('--optim-epochs', type=int, default=10, metavar='N',
+                    help='number of updates in each timestep (default: 5)')
+parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
+                    help='number of value updates in each optim epoch (default: 1)')
+parser.add_argument('--optim-batch-size', type=int, default=32, metavar='N',
+                    help='optim batch size per PPO update (default: 32)')
 parser.add_argument('--clip-epsilon', type=float, default=0.2, metavar='N',
                     help='clipping epsilon for PPO')
 parser.add_argument('--num-threads', type=int, default=4, metavar='N',
                     help='number of threads for agent (default: 4)')
-parser.add_argument('--seed', type=int, default=1, metavar='N',
+parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
 parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per PPO update (default: 2048)')
-parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
+parser.add_argument('--max-iter-num', type=int, default=2000, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 10)')
 parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
+parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
+                    help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
+torch.set_default_tensor_type('torch.DoubleTensor')
+set_seed(args.seed)
 
 
 def env_factory(thread_id):
@@ -57,32 +64,19 @@ def env_factory(thread_id):
     return env
 
 
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-if use_gpu:
-    torch.cuda.manual_seed_all(args.seed)
-
-env_dummy = env_factory(0)
-state_dim = env_dummy.observation_space.shape[0]
-is_disc_action = len(env_dummy.action_space.shape) == 0
-ActionTensor = LongTensor if is_disc_action else DoubleTensor
-
+state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
 running_state = ZFilter((state_dim,), clip=5)
-# running_reward = ZFilter((1,), demean=False, clip=10)
 
-"""define actor and critic"""
-if args.model_path is None:
-    if is_disc_action:
-        policy_net = DiscretePolicy(state_dim, env_dummy.action_space.n)
-    else:
-        policy_net = DiagnormalPolicy(state_dim, env_dummy.action_space.shape[0], log_std=args.log_std)
-    value_net = Value(state_dim)
+# Define actor, critic and their optimizers
+if is_disc_action:
+    policy_net = DiscretePolicy(state_dim, action_dim)
 else:
-    policy_net, value_net, running_state = pickle.load(open(args.model_path, "rb"))
+    policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+value_net = ValueFunction(state_dim)
+
 if use_gpu:
     policy_net = policy_net.cuda()
     value_net = value_net.cuda()
-del env_dummy
 
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
@@ -91,8 +85,12 @@ optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate
 optim_epochs = 5
 optim_batch_size = 4096
 
-"""create agent"""
-agent = ActorCriticAgent(env_factory, policy_net, running_state=running_state, render=args.render, num_threads=args.num_threads)
+cfg = Cfg(parse=args)
+agent = ActorCriticAgent("ClipPPO", env_factory, policy_net, value_net, cfg, running_state=running_state)
+clip_ppo = ClipPpoUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
+evaluator = ActorCriticTester(agent, cfg)
+trainer = ActorCriticTrainer(agent, clip_ppo, cfg, evaluator)
+trainer.start()
 
 
 def update_params(batch, i_iter):
@@ -103,10 +101,11 @@ def update_params(batch, i_iter):
     if use_gpu:
         states, actions, rewards, masks = states.cuda(), actions.cuda(), rewards.cuda(), masks.cuda()
     values = value_net(Variable(states, volatile=True)).data
-    fixed_log_probs = policy_net.get_log_prob(Variable(states, volatile=True), Variable(actions)).data
 
     """get advantage estimation from the trajectories"""
     advantages, returns = estimate_advantages(rewards, masks, values, args.gamma, args.tau, use_gpu)
+
+    fixed_log_probs = policy_net.get_log_prob(Variable(states, volatile=True), Variable(actions)).data
 
     lr_mult = max(1.0 - float(i_iter) / args.max_iter_num, 0)
 
@@ -150,4 +149,4 @@ def main_loop():
                 policy_net.cuda(), value_net.cuda()
 
 
-main_loop()
+# main_loop()

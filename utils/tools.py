@@ -62,6 +62,19 @@ def merge_log(log_list):
     return log
 
 
+def shuffle_batch(batch, perm):
+    for key, value in batch.items():
+        batch[key] = value[perm]
+    return batch
+
+
+def get_minibatch(batch, ind):
+    minibatch = {}
+    for key, value in batch.items():
+        minibatch[key] = value[ind]
+    return minibatch
+
+
 # ====================================================================================== #
 # Plotting and monitoring
 # ====================================================================================== #

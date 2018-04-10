@@ -44,7 +44,7 @@ class ActorCriticTrainer(object):
             batch, log = self.agent.collect_samples(self.min_batch_size)
             batch = self.agent.batch2tensor(batch)
             t0 = time.time()
-            log = self.updater(batch, log)
+            log = self.updater(batch, log, iter_i)
             t1 = time.time()
             log["update_time"] = t1 - t0
 

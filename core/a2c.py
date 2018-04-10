@@ -22,3 +22,13 @@ def a2c_step(policy_net, value_net, optimizer_policy, optimizer_value, states, a
     policy_loss.backward()
     torch.nn.utils.clip_grad_norm(policy_net.parameters(), 40)
     optimizer_policy.step()
+
+
+class A2cUpdater(object):
+    def __init__(self, policy_net, value_net, optimizer_policy, optimizer_value):
+        self.policy = policy_net
+        self.value = value_net
+        self.optimizer_policy = optimizer_policy
+        self.optimizer_value = optimizer_value
+
+    def __call__(self, batch, log, *args, **kwargs):

@@ -102,14 +102,14 @@ class TrpoUpdater(object):
 
         return flat_grad_grad_kl + v * self.damping
 
-    def __call__(self, batchs, log):
-        self.states = batchs["states"]
-        self.actions = batchs["actions"]
-        self.advantages = batchs["advantages"]
+    def __call__(self, batch, log, *args, **kwargs):
+        self.states = batch["states"]
+        self.actions = batch["actions"]
+        self.advantages = batch["advantages"]
         self.fixed_log_probs = self.policy_net.get_log_prob(Variable(self.states), Variable(self.actions)).data
 
         # update the value networks by L-BFGS
-        self.values_targets = Variable(batchs["value_targets"])
+        self.values_targets = Variable(batch["value_targets"])
         flat_params, _, opt_info = scipy.optimize.fmin_l_bfgs_b(self.get_value_loss,
                                                                 get_flat_params_from(self.value_net).cpu().numpy(),
                                                                 maxiter=25)
