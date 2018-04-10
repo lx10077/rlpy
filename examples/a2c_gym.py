@@ -2,22 +2,18 @@ import argparse
 import gym
 import os
 import sys
-import pickle
-import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import *
-from models.mlp_policy import Policy, DiagnormalPolicy, DiscretePolicy
-from models.mlp_critic import Value, ValueFunction
+from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
+from models.mlp_critic import ValueFunction
 from torch.autograd import Variable
-from core.a2c import a2c_step, A2cUpdater
+from core.a2c import A2cUpdater
 from core.common import estimate_advantages
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticTester
 
-Tensor = DoubleTensor
-torch.set_default_tensor_type('torch.DoubleTensor')
 
 parser = argparse.ArgumentParser(description='PyTorch A2C example')
 parser.add_argument('--env-name', default="HalfCheetah-v2", metavar='G',
@@ -55,6 +51,8 @@ parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
 parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
+torch.set_default_tensor_type('torch.DoubleTensor')
+set_seed(args.seed)
 
 
 def env_factory(thread_id):
@@ -63,78 +61,29 @@ def env_factory(thread_id):
     return env
 
 
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-if use_gpu:
-    torch.cuda.manual_seed_all(args.seed)
-
-env_dummy = env_factory(0)
-state_dim = env_dummy.observation_space.shape[0]
-is_disc_action = len(env_dummy.action_space.shape) == 0
-ActionTensor = LongTensor if is_disc_action else DoubleTensor
-
+state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
 running_state = ZFilter((state_dim,), clip=5)
-# running_reward = ZFilter((1,), demean=False, clip=10)
 
-"""define actor and critic"""
-if args.model_path is None:
-    if is_disc_action:
-        policy_net = DiscretePolicy(state_dim, env_dummy.action_space.n)
-    else:
-        policy_net = DiagnormalPolicy(state_dim, env_dummy.action_space.shape[0], log_std=args.log_std)
-    value_net = ValueFunction(state_dim)
+# Define actor, critic and their optimizers
+if is_disc_action:
+    policy_net = DiscretePolicy(state_dim, action_dim)
 else:
-    policy_net, value_net, running_state = pickle.load(open(args.model_path, "rb"))
+    policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+value_net = ValueFunction(state_dim)
+
 if use_gpu:
     policy_net = policy_net.cuda()
     value_net = value_net.cuda()
-del env_dummy
+
+running_state = ZFilter((state_dim,), clip=5)
 
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.lr_policy)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.lr_value)
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("A2c", env_factory, policy_net, value_net, cfg, distinguish="sep", running_state=running_state)
+agent = ActorCriticAgent("A2c", env_factory, policy_net, value_net, cfg,
+                         distinguish="sep", running_state=running_state)
 a2c = A2cUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
 evaluator = ActorCriticTester(agent, cfg)
 trainer = ActorCriticTrainer(agent, a2c, cfg, evaluator)
 trainer.start()
-
-
-def update_params(batch):
-    states = torch.from_numpy(np.stack(batch.state))
-    actions = torch.from_numpy(np.stack(batch.action))
-    rewards = torch.from_numpy(np.stack(batch.reward))
-    masks = torch.from_numpy(np.stack(batch.mask).astype(np.float64))
-    if use_gpu:
-        states, actions, rewards, masks = states.cuda(), actions.cuda(), rewards.cuda(), masks.cuda()
-    values = value_net(Variable(states, volatile=True)).data
-
-    """get advantage estimation from the trajectories"""
-    advantages, returns = estimate_advantages(rewards, masks, values, args.gamma, args.tau, use_gpu)
-
-    """perform TRPO update"""
-    a2c_step(policy_net, value_net, optimizer_policy, optimizer_value, states, actions, returns, advantages, args.l2_reg)
-
-
-def main_loop():
-    for i_iter in range(args.max_iter_num):
-        """generate multiple trajectories that reach the minimum batch_size"""
-        batch, log = agent.collect_samples(args.min_batch_size)
-        t0 = time.time()
-        update_params(batch)
-        t1 = time.time()
-
-        if i_iter % args.log_interval == 0:
-            print('{}\tT_sample {:.4f}\tT_update {:.4f}\tR_min {:.2f}\tR_max {:.2f}\tR_avg {:.2f}'.format(
-                i_iter, log['sample_time'], t1-t0, log['min_reward'], log['max_reward'], log['avg_reward']))
-
-        if args.save_model_interval > 0 and (i_iter+1) % args.save_model_interval == 0:
-            if use_gpu:
-                policy_net.cpu(), value_net.cpu()
-            pickle.dump((policy_net, value_net, running_state),
-                        open(os.path.join(assets_dir(), 'learned_models/{}_a2c.p'.format(args.env_name)), 'wb'))
-            if use_gpu:
-                policy_net.cuda(), value_net.cuda()
-
-# main_loop()
