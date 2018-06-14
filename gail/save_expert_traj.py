@@ -26,10 +26,7 @@ parser.add_argument('--max-expert-state-num', type=int, default=50000, metavar='
 args = parser.parse_args()
 
 env = gym.make(args.env_name)
-env.seed(args.seed)
-torch.manual_seed(args.seed)
-if use_gpu:
-    torch.cuda.manual_seed_all(args.seed)
+set_seed(args.seed)
 
 is_disc_action = len(env.action_space.shape) == 0
 state_dim = env.observation_space.shape[0]

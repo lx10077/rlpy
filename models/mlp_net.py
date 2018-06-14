@@ -23,7 +23,7 @@ class Discriminator(Network):
 
 class Discriminator(nn.Module):
     def __init__(self, num_inputs, hidden_size=(128, 128), activation='tanh'):
-        super().__init__()
+        super(Discriminator, self).__init__()
         if activation == 'tanh':
             self.activation = F.tanh
         elif activation == 'relu':
