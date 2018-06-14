@@ -27,25 +27,26 @@ args = parser.parse_args()
 
 env = gym.make(args.env_name)
 set_seed(args.seed)
+state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
 
-is_disc_action = len(env.action_space.shape) == 0
-state_dim = env.observation_space.shape[0]
-
-policy_net, _, running_state = pickle.load(open(args.model_path, "rb"))
+try:
+    policy_net, _, running_state = pickle.load(open(args.model_path, "rb"))
+except Exception as e:
+    info_print('Error', 'Fail to load saved model.')
+    raise Exception(e)
 expert_traj = []
 
 
 def main_loop():
 
     num_steps = 0
-
     for i_episode in count():
 
         state = env.reset()
         state = running_state(state)
         reward_episode = 0
 
-        for t in range(10000):
+        for _ in range(10000):
             state_var = Variable(Tensor(state).unsqueeze(0),  volatile=True)
             # choose mean action
             action = policy_net(state_var)[0].data[0].cpu().numpy()
@@ -66,12 +67,16 @@ def main_loop():
 
             state = next_state
 
-        print('Episode {}\t reward: {:.2f}'.format(i_episode, reward_episode))
+        info_print('Save traj', 'Episode {}\t reward: {:.2f}'.format(i_episode, reward_episode))
 
         if num_steps >= args.max_expert_state_num:
             break
 
 
-main_loop()
-expert_traj = np.stack(expert_traj)
-pickle.dump((expert_traj, running_state), open(os.path.join(assets_dir(), 'expert_traj/{}_expert_traj.p'.format(args.env_name)), 'wb'))
+if __name__ == "__main__":
+    main_loop()
+    save_dict = {"traj": np.stack(expert_traj),
+                 "running state": running_state}
+    save_path = os.path.join(assets_dir(), 'expert_traj/{}_expert_traj.p'.format(args.env_name))
+    with open(save_path, 'wb') as f:
+        pickle.dump(save_dict, f)

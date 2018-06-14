@@ -63,7 +63,7 @@ class ActorCriticTrainer(object):
                 log = self.evaluator.eval(iter_i)
                 self.meta_info["test_ %d" % iter_i] = log
 
-        print("[Finish] Complete training: {:d} -> {:d}.".format(self.begin_i, self.max_iter_num))
+        info_print('Finish', 'Complete training: {:d} -> {:d}.'.format(self.begin_i, self.max_iter_num))
         self.save_records()
         self.save_meta_info()
 
@@ -77,7 +77,7 @@ class ActorCriticTrainer(object):
             self.record_custom_rewards.append(timestep_log["avg_c_reward"])
 
     def save_records(self):
-        print("[Save] Saving records...")
+        info_print('Save', 'Saving records...')
         file = self.record_dir + "/" + self.id + "-record"
         self.record_rewards = np.array(self.record_rewards)
         if len(self.record_custom_rewards) > 0:
@@ -88,29 +88,27 @@ class ActorCriticTrainer(object):
             np.savez(file, rewards=self.record_rewards)
 
     def save_meta_info(self):
-        print("[Save] Saving the meta information...")
+        info_print('Save', 'Saving the meta information...')
         file = self.record_dir + '/' + self.id + "-metadata.pkl"
         try:
             with open(file, "wb") as f:
                 pickle.dump(self.meta_info, f)
         except Exception as e:
-            print("[Error] Fail to save the meta information.")
-            print(Exception(e))
+            info_print('Error', 'Fail to load the meta information: ' + Exception(e))
             pass
 
     def load_meta_info(self):
-        print("[Load] Saving the meta information...")
+        info_print('Load', 'Loading the meta information...')
         file = self.record_dir + '/' + self.id + "-metadata.pkl"
         try:
             with open(file, "wr") as f:
                 self.meta_info = pickle.load(f)
         except Exception as e:
-            print("[Error] Fail to load the desired meta information.")
-            print(Exception(e))
+            info_print('Error', 'Fail to load the meta information: ' + Exception(e))
             pass
 
     def save_model(self, iter_i=-1, file=None):
-        print("[Save] Saving the learned model...")
+        info_print('Save', 'Saving the learned model...')
         if file is None:
             file = os.path.join(self.model_dir, self.id + ".pth")
         save_dict = {}
@@ -123,12 +121,12 @@ class ActorCriticTrainer(object):
         try:
             torch.save(save_dict, file)
         except Exception as e:
-            print("[Error] Fail to save {}.".format(file))
-            print(Exception(e))
+            info_print('Error', 'Fail to save {}: '.format(file))
+            info_print('Error', Exception(e))
             pass
 
     def load_model(self, skip=None, file=None):
-        print("[Load] Loading saved model...")
+        info_print('Load', 'Loading the learned model...')
         if file is None:
             file = os.path.join(self.model_dir, self.id + ".pth")
         try:
@@ -148,10 +146,10 @@ class ActorCriticTrainer(object):
                     try:
                         state_dict[key] = save_dict[model][key]
                     except KeyError:
-                        print("[KeyError] {}'s {} isn't in the save dict".format(model, key))
+                        info_print('KeyError', "{}'s {} isn't in the save dict".format(model, key))
                         continue
                 net.load_state_dict(state_dict)
         except Exception as e:
-            print("[Error] Fail to open {}.".format(file))
-            print(Exception(e))
+            info_print('Error', "Fail to open {}.".format(file))
+            info_print('Error', Exception(e))
             pass

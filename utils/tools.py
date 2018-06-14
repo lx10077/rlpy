@@ -5,6 +5,11 @@ import os
 import time
 
 
+def info_print(head, msg):
+    pre_len = len(head)
+    print(('[{:<'+str(pre_len)+'s}]{: <'+str(10-pre_len)+'s}{}').format(head, ' ', msg))
+
+
 def assets_dir():
     new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../assets/'))
     if not os.path.exists(new_dir):

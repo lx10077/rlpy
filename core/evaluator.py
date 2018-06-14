@@ -37,7 +37,7 @@ class ActorCriticTester(object):
         population_plot(self.eval_iters, self.eval_rewards, title, self.eval_dir)
 
     def save_evals(self):
-        print("[Save] Saving evaluation results...")
+        info_print('Save', 'Saving evaluation results...')
         file = self.eval_dir + "/" + self.id
         self.eval_iters = np.array(self.eval_iters)
         self.eval_rewards = np.array(self.eval_rewards)
@@ -77,4 +77,4 @@ class ActorCriticTester(object):
 
     def _check(self):
         if self.agent.running_state is None:
-            print("[Warning] No running states.")
+            info_print('Warning', 'No running states.')

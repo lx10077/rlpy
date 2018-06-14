@@ -2,8 +2,6 @@ import argparse
 import gym
 import os
 import sys
-import pickle
-import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import *
@@ -60,18 +58,11 @@ def env_factory(thread_id):
     return env
 
 
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-if use_gpu:
-    torch.cuda.manual_seed_all(args.seed)
+set_seed(args.seed)
+state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
 
-env_dummy = env_factory(0)
-state_dim = env_dummy.observation_space.shape[0]
-is_disc_action = len(env_dummy.action_space.shape) == 0
-action_dim = (1 if is_disc_action else env_dummy.action_space.shape[0])
-ActionTensor = LongTensor if is_disc_action else DoubleTensor
 
-"""define actor, critic and discrimiator"""
+# define actor, critic and discrimiator
 if is_disc_action:
     policy_net = DiscretePolicy(state_dim, env_dummy.action_space.n)
 else:
@@ -79,6 +70,7 @@ else:
 value_net = Value(state_dim)
 discrim_net = Discriminator(state_dim + action_dim)
 discrim_criterion = nn.BCELoss()
+
 if use_gpu:
     policy_net = policy_net.cuda()
     value_net = value_net.cuda()
@@ -102,8 +94,7 @@ def expert_reward(state, action):
     return -math.log(discrim_net(Variable(state_action, volatile=True)).data.numpy()[0])
 
 
-"""create agent"""
-agent = ActorCriticAgent(env_factory, policy_net, custom_reward=expert_reward,
+agent = ActorCriticAgent('GAIL', env_factory, policy_net, value_net, custom_reward=expert_reward,
                          running_state=running_state, render=args.render, num_threads=args.num_threads)
 
 

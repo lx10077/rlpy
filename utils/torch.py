@@ -73,6 +73,7 @@ def set_seed(seed):
 
 def get_gym_info(env_factory):
     from gym.spaces.box import Box
+    print('[Prepare]   Get env information...')
     env = env_factory(0)
 
     state_dim = env.observation_space.shape
