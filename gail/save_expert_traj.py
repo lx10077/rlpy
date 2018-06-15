@@ -27,12 +27,12 @@ args = parser.parse_args()
 
 env = gym.make(args.env_name)
 set_seed(args.seed)
-state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
+state_dim, action_dim, is_disc_action = get_gym_info(env)
 
 try:
     policy_net, _, running_state = pickle.load(open(args.model_path, "rb"))
 except Exception as e:
-    info_print('Error', 'Fail to load saved model.')
+    info_print('Error', 'Fail to load saved model and running states.')
     raise Exception(e)
 expert_traj = []
 
@@ -47,7 +47,7 @@ def main_loop():
         reward_episode = 0
 
         for _ in range(10000):
-            state_var = Variable(Tensor(state).unsqueeze(0),  volatile=True)
+            state_var = Variable(np_to_tensor(state).unsqueeze(0),  volatile=True)
             # choose mean action
             action = policy_net(state_var)[0].data[0].cpu().numpy()
             # choose stochastic action
@@ -77,6 +77,6 @@ if __name__ == "__main__":
     main_loop()
     save_dict = {"traj": np.stack(expert_traj),
                  "running state": running_state}
-    save_path = os.path.join(assets_dir(), 'expert_traj/{}_expert_traj.p'.format(args.env_name))
+    save_path = os.path.join(asset_dir(), 'expert_traj/{}_expert_traj.p'.format(args.env_name))
     with open(save_path, 'wb') as f:
         pickle.dump(save_dict, f)

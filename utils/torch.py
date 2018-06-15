@@ -64,28 +64,37 @@ def adjust_learning_rate(optimizer, lr):
 # ====================================================================================== #
 # Getting and setting operations
 # ====================================================================================== #
-def set_seed(seed):
+def set_seed(seed, env=None):
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    if env is not None:
+        env.seed(seed)
 
 
 def get_gym_info(env_factory):
+    import gym
     from gym.spaces.box import Box
     print('[Prepare]   Get env information...')
-    env = env_factory(0)
+    try:
+        env = env_factory(0)
+    except TypeError:
+        if isinstance(env_factory, gym.wrappers.time_limit.TimeLimit):
+            env = env_factory
+        else:
+            raise TypeError('Input should be env or env_factory.')
 
     state_dim = env.observation_space.shape
-    if len(state_dim) == 1:
+    if len(state_dim) == 1:  # If state is 3-dim image.
         state_dim = state_dim[0]
 
     if isinstance(env.action_space, Box):
-        # if action space is continous, return action dimension
+        # If action space is continous, return action dimension.
         action_dim = env.action_space.shape[0]
         is_disc_action = False
     else:
-        # if action space is discretr, return number of actions,
+        # If action space is discrete, return number of actions,
         # but still called action_dim
         action_dim = env.action_space.n
         is_disc_action = True

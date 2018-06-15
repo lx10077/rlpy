@@ -166,7 +166,7 @@ def main_loop():
         if args.save_model_interval > 0 and (i_iter+1) % args.save_model_interval == 0:
             if use_gpu:
                 policy_net.cpu(), value_net.cpu(), discrim_net.cpu()
-            pickle.dump((policy_net, value_net, discrim_net), open(os.path.join(assets_dir(), 'learned_models/{}_gail.p'.format(args.env_name)), 'wb'))
+            pickle.dump((policy_net, value_net, discrim_net), open(os.path.join(asset_dir(), 'learned_models/{}_gail.p'.format(args.env_name)), 'wb'))
             if use_gpu:
                 policy_net.cuda(), value_net.cuda(), discrim_net.cuda()
 

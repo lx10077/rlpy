@@ -6,7 +6,7 @@ class ActorCriticTester(object):
     def __init__(self, agent, cfg):
         self.agent = agent
         self.cfg = cfg
-        self.asset_dir = assets_dir()
+        self.asset_dir = asset_dir()
         self.eval_dir = set_dir(self.asset_dir, "evaluations")
 
         # get some components from the agent

@@ -1,8 +1,5 @@
-from plotly.graph_objs import Scatter, Line
-import numpy as np
-import plotly
+import shutil
 import os
-import time
 
 
 def info_print(head, msg):
@@ -10,11 +7,19 @@ def info_print(head, msg):
     print(('[{:<'+str(pre_len)+'s}]{: <'+str(10-pre_len)+'s}{}').format(head, ' ', msg))
 
 
-def assets_dir():
-    new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../assets/'))
+def asset_dir():
+    new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../asset/'))
     if not os.path.exists(new_dir):
         os.makedirs(new_dir)
-        print("[Dir] Create asset_dir in " + new_dir)
+        print("[Dir]       Create asset_dir in " + new_dir)
+    return new_dir
+
+
+def trainlog_dir():
+    new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config/'))
+    if not os.path.exists(new_dir):
+        os.makedirs(new_dir)
+        print("[Dir]       Create train_log in " + new_dir)
     return new_dir
 
 
@@ -22,7 +27,11 @@ def set_dir(prefix, name):
     new_dir = os.path.join(prefix, name)
     if not os.path.exists(new_dir):
         os.makedirs(new_dir)
-        print("[Dir] Create asset_dir in " + new_dir)
+        print("[Dir]       Create new_dir in " + new_dir)
+    else:
+        print("[Warning]   Existing new_dir, will overwrite it.")
+        shutil.rmtree(new_dir)  # removes all the subdirectories!
+        os.makedirs(new_dir)
     return new_dir
 
 
@@ -78,68 +87,3 @@ def get_minibatch(batch, ind):
     for key, value in batch.items():
         minibatch[key] = value[ind]
     return minibatch
-
-
-# ====================================================================================== #
-# Plotting and monitoring
-# ====================================================================================== #
-def population_plot(xs, ys, title, path):
-    """Plots min, max and mean + standard deviation bars of a population over time.
-
-    Parameters
-    ----------
-    xs: iterations, list or numpy array, shape (N, )
-    ys: sum of rewards, list or numpy array, shape (N, num_epsd)
-    title: figure title
-    path: saving dir
-    """
-    max_colour, mean_colour, std_colour = 'rgb(0, 132, 180)', 'rgb(0, 172, 237)', 'rgba(29, 202, 255, 0.2)'
-
-    xs, ys = np.array(xs), np.array(ys)
-    ys_min, ys_max = ys.min(1).squeeze(), ys.max(1).squeeze()
-    ys_mean, ys_std = ys.mean(1).squeeze(), ys.std(1).squeeze()
-    ys_upper, ys_lower = ys_mean + ys_std, ys_mean - ys_std
-
-    trace_max = Scatter(x=xs, y=ys_max, line=Line(color=max_colour, dash='dash'), name='Max')
-    trace_upper = Scatter(x=xs, y=ys_upper, line=Line(color='transparent'),
-                          name='+1 Std. Dev.', showlegend=False)
-    trace_mean = Scatter(x=xs, y=ys_mean, fill='tonexty',
-                         fillcolor=std_colour, line=Line(color=mean_colour), name='Mean')
-    trace_lower = Scatter(x=xs, y=ys_lower, fill='tonexty',
-                          fillcolor=std_colour, line=Line(color='transparent'),
-                          name='-1 Std. Dev.', showlegend=False)
-    trace_min = Scatter(x=xs, y=ys_min, line=Line(color=max_colour, dash='dash'), name='Min')
-
-    plotly.offline.plot({
-        'data': [trace_upper, trace_mean, trace_lower, trace_min, trace_max],
-        'layout': dict(title=title, xaxis={'title': 'Iteration'}, yaxis={'title': title})
-    }, filename=os.path.join(path, title + '.html'), auto_open=False)
-
-
-def log_plot(writer, update_log, i_iter):
-    """Monitor training process by TensorboardX.
-
-    Parameters
-    ----------
-    writer: SummaryWriter in TensorboardX, run "tensorboard --logdir runs".
-    update_log: dict like {tag: value}, containing all sampling and updating information.
-    i_iter: int, global step.
-    """
-
-    reward_dict = {}
-    action_dict = {}
-    if not update_log:
-        print("[Warning] Empty updating log!")
-        return
-
-    for tag, value in update_log.items():
-        if "reward" in tag:
-            reward_dict[tag] = value
-        elif "action" in tag:
-            action_dict[tag] = value
-        else:
-            writer.add_scalar(tag, value, i_iter)
-
-    if 'total_reward' in reward_dict.keys():
-        del reward_dict['total_reward']
-    writer.add_scalars('reward', reward_dict, i_iter)

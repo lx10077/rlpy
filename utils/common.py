@@ -1,5 +1,5 @@
 import numpy as np
-import pickle
+import json
 
 
 # ====================================================================================== #
@@ -34,40 +34,49 @@ class Cfg(object):
     def save_config(self, file=None):
         try:
             if file is None:
-                file = self.config_file
-            with open(file, "wb") as f:
-                pickle.dump(self.config, f)
+                if self.config_file is not None:
+                    file = self.config_file
+                else:
+                    raise ValueError('No dir to save.')
+            else:
+                if self.config_file is None:
+                    self.set_saved_file(file)
+            with open(file, "w") as f:
+                json.dump(self.config, f)
         except Exception as e:
-            print("[Error] Fail to save the file {}.".format(file))
+            print("[Error]     Fail to save the file {}.".format(file))
             raise Exception(e)
 
     def load_config(self, file=None):
         try:
             if file is None:
-                file = self.config_file
-            with open(file, "wb") as f:
-                self.config = pickle.load(f)
+                if self.config_file is not None:
+                    file = self.config_file
+                else:
+                    raise ValueError('No dir to load.')
+            with open(file, "r") as f:
+                self.config = json.load(f)
         except Exception as e:
-            print("[Error] Fail to open the file {}.".format(file))
+            print("[Error]     Fail to open the file {}.".format(file))
             raise Exception(e)
 
     def __getitem__(self, item):
         try:
             return self.config[item]
         except Exception as e:
-            print("[Error] No such item {} in config.".format(str(item)))
+            print("[Error]     No such item {} in config.".format(str(item)))
             raise Exception(e)
 
     def __setitem__(self, key, value):
         if key in self.config:
-            print("[Warning] {} has been in the config. Overwrite it now.".format(key))
+            print("[Warning]   {} has been in the config. Overwrite it now.".format(key))
         self.config[key] = value
 
     def __delitem__(self, key):
         try:
             del self.config[key]
         except Exception as e:
-            print("[Error] Fail to delete the key {}.".format(key))
+            print("[Error]     Fail to delete the key {}.".format(key))
             print(Exception(e))
 
     def __len__(self):
