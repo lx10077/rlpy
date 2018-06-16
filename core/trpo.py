@@ -4,14 +4,14 @@ import math
 
 
 class TrpoUpdater(object):
-    def __init__(self, policy_net, value_net, max_kl, damping, l2_reg, nsteps, use_fim=False):
+    def __init__(self, policy_net, value_net, cfg, use_fim=False):
         self.policy_net = policy_net
         self.value_net = value_net
-        self.max_kl = max_kl
-        self.damping = damping
-        self.l2_reg = l2_reg
+        self.max_kl = cfg["max_kl"]
+        self.damping = cfg["damping"]
+        self.l2_reg = cfg["l2_reg"]
+        self.nsteps = cfg["nsteps"] if "nsteps" in cfg else 10
         self.use_fim = use_fim
-        self.nsteps = nsteps
         self.Fvp = self.fvp_fim if use_fim else self.fvp_direct
 
     def get_value_loss(self, flat_params):

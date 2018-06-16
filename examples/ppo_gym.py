@@ -10,7 +10,7 @@ from models.mlp_critic import ValueFunction
 from core.ppo import ClipPpoUpdater
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
-from core.evaluator import ActorCriticTester
+from core.evaluator import ActorCriticEvaluator
 
 parser = argparse.ArgumentParser(description='PyTorch PPO example')
 parser.add_argument('--env-name', default="HalfCheetah-v2", metavar='G',
@@ -49,7 +49,7 @@ parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 10)')
 parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
-parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
+parser.add_argument('--eval-model-interval', type=int, default=5, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -82,6 +82,6 @@ optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate
 cfg = Cfg(parse=args)
 agent = ActorCriticAgent("ClipPPO", env_factory, policy_net, value_net, cfg, running_state=running_state)
 clip_ppo = ClipPpoUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
-evaluator = ActorCriticTester(agent, cfg)
+evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, clip_ppo, cfg, evaluator)
 trainer.start()

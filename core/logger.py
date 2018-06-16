@@ -1,64 +1,21 @@
-from utils.tools import trainlog_dir, asset_dir, set_dir
+from utils.tools import trainlog_dir, set_dir
 from tensorboardX import SummaryWriter
-from plotly.graph_objs import Scatter, Line
 import os
-import plotly
 import logging
 
 
 trainlog_dir = trainlog_dir()
-asset_dir = asset_dir()
-
-
-def loggerconfig(log_file, verbose=2):
-    logger = logging.getLogger()
-    formatter = logging.Formatter('[%(levelname)-8s] (%(processName)-11s) %(message)s')
-    file_handler = logging.FileHandler(log_file, 'w')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    if verbose >= 2:
-        logger.setLevel(logging.DEBUG)
-    elif verbose >= 1:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.WARNING)
-    return logger
-
-
-class Dlogger(object):
-    def __init__(self, output_name):
-        self.log_file = open(output_name, 'w')
-        self.infos = {}
-
-    def append(self, key, val):
-        vals = self.infos.setdefault(key, [])
-        vals.append(val)
-
-    def log(self, extra_msg=''):
-        msgs = [extra_msg]
-        for key, vals in self.infos.items():
-            msgs.append('%s %.6f' % (key, sum(vals)/len(vals)))
-        msg = '\n'.join(msgs)
-        self.log_file.write(msg + '\n')
-        self.log_file.flush()
-        self.infos = {}
-        return msg
-
-    def write(self, msg, mute=False):
-        self.log_file.write(msg + '\n')
-        self.log_file.flush()
-        if not mute:
-            print(msg)
+config_dir = set_dir(trainlog_dir, 'config')
 
 
 # ====================================================================================== #
 # Task and logger
 # ====================================================================================== #
-class task(object):
+class Task(object):
     def __init__(self, agent_id, cfg):
         self.name = agent_id
         self.cfg = cfg
-        self.task_save_dir = os.path.join(trainlog_dir, self.name)
+        self.task_save_dir = set_dir(config_dir, self.name)
         self.set_subfiles()
 
     def set_subfiles(self):
@@ -80,26 +37,47 @@ class task(object):
         return os.path.join(self.task_save_dir, 'result_summary')
 
 
-class logger(object):
-    def __init__(self, agent, cfg):
-        self.task = task(agent.id, cfg)
+def loggerconfig(log_file, verbose=2, name=''):
+    """
+    Verbose: critical=6 > error=5 > warning=4 > info=3 > debug=2 > notset=1
+    """
+    def rtlevel(verb):
+        if verb >= 2:
+            return logging.DEBUG
+        elif verb == 1:
+            return logging.INFO
+        else:
+            return logging.WARNING
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    filehdlr = logging.FileHandler(log_file)
+    console = logging.StreamHandler()
+    filehdlr.setLevel(logging.DEBUG)
+    console.setLevel(rtlevel(verbose))
+    formatter = logging.Formatter(fmt='[%(asctime)s] %(levelname)-7s: %(message)s',
+                                  datefmt='%Y-%m-%d %H:%M:%S')
+    filehdlr.setFormatter(formatter)
+    console.setFormatter(formatter)
+    logger.addHandler(filehdlr)
+    logger.addHandler(console)
+    return logger
+
+
+class Logger(object):
+    def __init__(self, log_id, cfg, verbose=2):
+        self.task = Task(log_id, cfg)
         self.writer = SummaryWriter(self.task.event_dir)
-        self.train_log = loggerconfig(os.path.join(self.task.task_save_dir, 'trainlog.txt'))
-        self.test_log = loggerconfig(os.path.join(self.task.task_save_dir, 'testlog.txt'))
+        self.train_log = loggerconfig(os.path.join(self.task.task_save_dir, 'trainlog.txt'), verbose, 'trainlog')
+        self.test_log = loggerconfig(os.path.join(self.task.task_save_dir, 'testlog.txt'), verbose+1, 'testlog')
 
     def record(self, i_iter, update_log):
-        """Monitor training process by TensorboardX.
-
-        Parameters
-        ----------
-        writer: SummaryWriter in TensorboardX, run "tensorboard --logdir runs".
-        update_log: dict like {tag: value}, containing all sampling and updating information.
-        i_iter: int, global step.
+        """SummaryWriter in TensorboardX, run 'tensorboard --logdir runs'.
         """
         reward_dict = {}
         action_dict = {}
         if not update_log:
-            self.write("Empty updating log!")
+            self.write("Empty updating log!", 4)
             return
 
         for tag, value in update_log.items():
@@ -113,47 +91,23 @@ class logger(object):
         if 'total_reward' in reward_dict.keys():
             del reward_dict['total_reward']
         self.writer.add_scalars('reward', reward_dict, i_iter)
-        raise NotImplementedError
 
-    def write(self, msg, type='train'):
-        raise NotImplementedError
+    def summary(self, msg, verbose=3):
+        if verbose == 3:
+            self.test_log.info(msg)
+        elif verbose == 4:
+            self.test_log.warning(msg)
+        elif verbose <= 2:
+            self.test_log.debug(msg)
+        else:
+            self.test_log.critical(msg)
 
-
-
-# ====================================================================================== #
-# Plotting and monitoring
-# ====================================================================================== #
-def population_plot(xs, ys, title, path):
-    """Plots min, max and mean + standard deviation bars of a population over time.
-
-    Parameters
-    ----------
-    xs: iterations, list or numpy array, shape (N, )
-    ys: sum of rewards, list or numpy array, shape (N, num_epsd)
-    title: figure title
-    path: saving dir
-    """
-    max_colour, mean_colour, std_colour = 'rgb(0, 132, 180)', 'rgb(0, 172, 237)', 'rgba(29, 202, 255, 0.2)'
-
-    xs, ys = np.array(xs), np.array(ys)
-    ys_min, ys_max = ys.min(1).squeeze(), ys.max(1).squeeze()
-    ys_mean, ys_std = ys.mean(1).squeeze(), ys.std(1).squeeze()
-    ys_upper, ys_lower = ys_mean + ys_std, ys_mean - ys_std
-
-    trace_max = Scatter(x=xs, y=ys_max, line=Line(color=max_colour, dash='dash'), name='Max')
-    trace_upper = Scatter(x=xs, y=ys_upper, line=Line(color='transparent'),
-                          name='+1 Std. Dev.', showlegend=False)
-    trace_mean = Scatter(x=xs, y=ys_mean, fill='tonexty',
-                         fillcolor=std_colour, line=Line(color=mean_colour), name='Mean')
-    trace_lower = Scatter(x=xs, y=ys_lower, fill='tonexty',
-                          fillcolor=std_colour, line=Line(color='transparent'),
-                          name='-1 Std. Dev.', showlegend=False)
-    trace_min = Scatter(x=xs, y=ys_min, line=Line(color=max_colour, dash='dash'), name='Min')
-
-    plotly.offline.plot({
-        'data': [trace_upper, trace_mean, trace_lower, trace_min, trace_max],
-        'layout': dict(title=title, xaxis={'title': 'Iteration'}, yaxis={'title': title})
-    }, filename=os.path.join(path, title + '.html'), auto_open=False)
-
-
-
+    def write(self, msg, verbose=3):
+        if verbose == 3:
+            self.train_log.info(msg)
+        elif verbose == 4:
+            self.train_log.warning(msg)
+        elif verbose <= 2:
+            self.train_log.debug(msg)
+        else:
+            self.train_log.critical(msg)

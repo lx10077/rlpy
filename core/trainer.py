@@ -1,18 +1,21 @@
 from utils.torch import *
+from core.logger import Logger
 import time
 import os
 
 
 class ActorCriticTrainer(object):
-    def __init__(self, agent, updater, cfg, log, evaluator=None):
+    def __init__(self, agent, updater, cfg, evaluator=None):
         self.agent = agent
+        self.id = self.agent.id
         self.updater = updater
         self.evaluator = evaluator
         self.cfg = cfg
-        self.log = log
-        self.id = self.agent.id
-        self.model_dir = self.log.model_dir
+        self.log = Logger(self.id, self.cfg)
+        self.model_dir = self.log.task.model_dir
         self.iter_i = 0
+        if self.evaluator is not None:
+            self.evaluator.set_logger(self.log)
 
         self.gpu = cfg["gpu"] if "gpu" in cfg else False
         self.tau = cfg["tau"]
@@ -25,13 +28,7 @@ class ActorCriticTrainer(object):
         self.eval_model_interval = cfg["eval_model_interval"]
         self.begin_i = 0
 
-    def start(self):
-        try:
-            self.load_checkpoint('latest')
-        except Exception as e:
-            self.log.write("{}, can't load the latest checkpoint.".format(str(Exception(e))))
-            pass
-
+    def start(self, every_save=False):
         while self.iter_i < self.max_iter_num:
             batch, train_log = self.agent.collect_samples(self.min_batch_size)
             batch = self.agent.batch2tensor(batch)
@@ -46,22 +43,26 @@ class ActorCriticTrainer(object):
                 msg = '{}\tT_sample {:.4f}\tT_update {:.4f}\tR_min {:.2f}\tR_max {:.2f}\tR_avg {:.2f}'.format(
                     self.iter_i, train_log['sample_time'], t1 - t0, train_log['min_reward'],
                     train_log['max_reward'], train_log['avg_reward'])
-                self.log.write(msg)
+                self.log.write(msg, 3)
 
             if self.evaluator is not None and self.eval_model_interval > 0 \
                     and (self.iter_i + 1) % self.eval_model_interval == 0:
                 test_log = self.evaluator.eval(self.iter_i)
-                self.log.record(test_log)
+                msg = 'Test in {}\tR_min {:.2f}\tR_max {:.2f}\tR_avg {:.2f}'.format(
+                    self.iter_i, min(test_log['rs']), max(test_log['rs']), test_log['ravg'])
+                self.log.summary(msg, 3)
 
             if self.save_model_interval > 0 and (self.iter_i + 1) % self.save_model_interval == 0:
                 self.save_checkpoint('iter-' + str(self.iter_i))
-            self.save_checkpoint('latest')
+
+            if every_save:
+                self.save_checkpoint('latest')
             self.iter_i += 1
 
-        self.log.write('Complete training: {:d} -> {:d}.'.format(self.begin_i, self.max_iter_num))
+        self.log.write('Complete training: {:d} -> {:d}.'.format(self.begin_i, self.max_iter_num), 3)
 
     def save_checkpoint(self, name):
-        self.log.write('Save', 'Saving the {} checkpoint...'.format(name))
+        self.log.write('Saving the {} checkpoint...'.format(name), 3)
         file = os.path.join(self.model_dir, name)
         save_dict = {}
         for model, net in self.agent.model_dict.items():
@@ -72,11 +73,11 @@ class ActorCriticTrainer(object):
         try:
             torch.save(save_dict, file)
         except Exception as e:
-            self.log.write('Fail to save {}: '.format(file))
+            self.log.write('Fail to save {}: '.format(file), 4)
             raise Exception(e)
 
     def load_checkpoint(self, name="latest"):
-        self.log.write('Loading the {} checkpoint...'.format(name))
+        self.log.write('Loading the {} checkpoint...'.format(name), 3)
         file = os.path.join(self.model_dir, name)
         try:
             save_dict = get_state_dict(file)
@@ -92,9 +93,9 @@ class ActorCriticTrainer(object):
                     try:
                         state_dict[key] = save_dict[model][key]
                     except KeyError:
-                        self.log.write("{}'s {} isn't in the save dict".format(model, key))
+                        self.log.write("{}'s {} isn't in the save dict".format(model, key), 5)
                         continue
                 net.load_state_dict(state_dict)
         except Exception as e:
-            self.log.write("Fail to open {}.".format(file))
+            self.log.write("Fail to open {}.".format(file), 4)
             raise Exception(e)

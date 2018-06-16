@@ -22,13 +22,13 @@ class ClipPpoUpdater(object):
         for _ in range(self.optim_value_iternum):
             values_pred = self.value(Variable(states))
             value_loss = (values_pred - values_targets).pow(2).mean()
-            log["value loss"] = value_loss.data[0]
+            log["value_loss"] = value_loss.data[0]
 
             # weight decay
             if self.l2_reg > 0:
                 for param in self.value.parameters():
                     value_loss += param.pow(2).sum() * self.l2_reg
-                log["value loss w l2r"] = value_loss.data[0]
+                log["value_loss_w_l2r"] = value_loss.data[0]
 
             self.optimizer_value.zero_grad()
             value_loss.backward()
@@ -65,7 +65,7 @@ class ClipPpoUpdater(object):
         self.optimizer_policy.lr = self.lr * lr_mult
         self.optimizer_value.lr = self.lr * lr_mult
         self.curr_clip_epsilon = self.clip_epsilon * lr_mult
-        log["clip eps"] = self.curr_clip_epsilon
+        log["clip_eps"] = self.curr_clip_epsilon
         log["lr"] = self.lr * lr_mult
 
         for _ in range(self.optim_epochs):

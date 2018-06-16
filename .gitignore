@@ -4,6 +4,7 @@
 /__pycache__/
 /assets/
 /.idea/
+/train_log/
 
 
 
@@ -13,3 +14,4 @@
 ######################
 *.pyc
 *.p
+*.json

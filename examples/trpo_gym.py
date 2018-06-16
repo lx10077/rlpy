@@ -10,7 +10,7 @@ from models.mlp_critic import ValueFunction
 from core.trpo import TrpoUpdater
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
-from core.evaluator import ActorCriticTester
+from core.evaluator import ActorCriticEvaluator
 
 
 parser = argparse.ArgumentParser(description='PyTorch TRPO example')
@@ -44,7 +44,7 @@ parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 10)')
 parser.add_argument('--save-model-interval', type=int, default=100, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
-parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
+parser.add_argument('--eval-model-interval', type=int, default=5, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -74,7 +74,7 @@ if use_gpu and args.gpu:
 
 cfg = Cfg(parse=args)
 agent = ActorCriticAgent("Trpo", env_factory, policy_net, value_net, cfg, running_state=running_state)
-trpo = TrpoUpdater(policy_net, value_net, args.max_kl, args.damping, args.l2_reg, nsteps=10, use_fim=False)
-evaluator = ActorCriticTester(agent, cfg)
+trpo = TrpoUpdater(policy_net, value_net, cfg, use_fim=False)
+evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, trpo, cfg, evaluator)
 trainer.start()

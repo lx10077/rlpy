@@ -12,7 +12,7 @@ from core.a2c import A2cUpdater
 from core.common import estimate_advantages
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
-from core.evaluator import ActorCriticTester
+from core.evaluator import ActorCriticEvaluator
 
 
 parser = argparse.ArgumentParser(description='PyTorch A2C example')
@@ -84,6 +84,6 @@ cfg = Cfg(parse=args)
 agent = ActorCriticAgent("A2c", env_factory, policy_net, value_net, cfg,
                          distinguish="sep", running_state=running_state)
 a2c = A2cUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
-evaluator = ActorCriticTester(agent, cfg)
+evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, a2c, cfg, evaluator)
 trainer.start()
