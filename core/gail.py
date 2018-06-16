@@ -23,13 +23,20 @@ class GailUpdater(object):
         else:
             raise TypeError('{} is NOT surpported.'.format(suboptimizer))
 
+    def set_traj(self, expert_traj):
+        if isinstance(expert_traj, list):
+            expert_traj = np.array(expert_traj)
+        self.expert_traj = np_to_var(expert_traj)
+        if torch.cuda.is_available() and self.gpu:
+            self.expert_traj = self.expert_traj.cuda()
+
     def __call__(self, batch, log, *args, **kwargs):
         log = self.suboptimizer(batch, log, *args, **kwargs)
 
-        states = batch["states"]
-        actions = batch["actions"]
+        states = Variable(batch["states"])
+        actions = Variable(batch["actions"])
         for _ in range(3):
-            g_o = self.discrim((torch.cat([states, actions], 1)))
+            g_o = self.discrim(torch.cat([states, actions], 1))
             e_o = self.discrim(self.expert_traj)
 
             loss1 = self.discrim_criterion(g_o, Variable(ones((states.shape[0], 1))))
@@ -40,7 +47,6 @@ class GailUpdater(object):
             self.optimizer_discrim.zero_grad()
             discrim_loss.backward()
             self.optimizer_discrim.step()
-
         return log
 
     def state_dict(self):

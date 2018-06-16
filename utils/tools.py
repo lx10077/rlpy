@@ -7,6 +7,14 @@ def info_print(head, msg):
     print(('[{:<'+str(pre_len)+'s}]{: <'+str(10-pre_len)+'s}{}').format(head, ' ', msg))
 
 
+def asset_dir():
+    new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../asset/'))
+    if not os.path.exists(new_dir):
+        os.makedirs(new_dir)
+        print("[Dir]       Create asset_dir in " + new_dir)
+    return new_dir
+
+
 def trainlog_dir(prefix=None):
     if prefix is not None:
         new_dir = os.path.abspath(os.path.join(os.path.dirname(str(prefix)), '../train_log/'))
@@ -16,6 +24,10 @@ def trainlog_dir(prefix=None):
         os.makedirs(new_dir)
         print("[Dir]       Create train_log in " + new_dir)
     return new_dir
+
+
+assetdir = asset_dir()
+trainlogdir = trainlog_dir()
 
 
 def set_dir(prefix, name, overwrite=False):

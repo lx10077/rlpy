@@ -24,6 +24,7 @@ class ActorCriticEvaluator(object):
         self.eval_iters = []
         self.eval_rewards = [np.zeros(self.num_epsd)]  # elements are numpy array
         self.best_avg_rewards = -np.inf
+        self.eval_env = self.env_factory(3333)
 
     def set_logger(self, log):
         self.log = log
@@ -40,18 +41,17 @@ class ActorCriticEvaluator(object):
         return {'ravg': avg_rewards, 'rs': eval_rewards}
 
     def _eval(self, num_epsd):
-        eval_env = self.env_factory(3333)
         total_rewards = np.zeros(num_epsd)
         epsd_idx = 0
         epsd_iters = 0
-        state = eval_env.reset()
+        state = self.eval_env.reset()
         while epsd_idx < num_epsd:
             if self.agent.running_state is not None:
                 state = self.agent.running_state(state, update=False)
 
             state_var = Variable(self.agent.tensor(state).unsqueeze(0), volatile=True)
             action = self.policy.select_action(state_var)
-            next_state, reward, done, _ = eval_env.step(action)
+            next_state, reward, done, _ = self.eval_env.step(action)
             total_rewards[epsd_idx] += reward
             epsd_iters += 1
             state = next_state
@@ -60,15 +60,13 @@ class ActorCriticEvaluator(object):
                 # print('>>> Eval: [%2d/%d], rewards: %s' % (epsd_idx + 1, num_epsd, total_rewards[epsd_idx]))
 
                 if epsd_idx < num_epsd - 1:  # leave last reset to next run
-                    state = eval_env.reset()
+                    state = self.eval_env.reset()
 
                 epsd_idx += 1
                 epsd_iters = 0
 
         avg_rewards = total_rewards.mean()
         # print('>>> Eval: avg total rewards: %s' % avg_rewards)
-        eval_env.close()
-        del eval_env
         return avg_rewards, total_rewards
 
 

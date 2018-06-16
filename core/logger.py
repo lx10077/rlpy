@@ -37,7 +37,7 @@ class Task(object):
         return os.path.join(self.task_save_dir, 'result_summary')
 
 
-def loggerconfig(log_file, verbose=2, name=''):
+def loggerconfig(log_file, verbose=2, name='root'):
     """
     Verbose: critical=6 > error=5 > warning=4 > info=3 > debug=2 > notset=1
     """
@@ -71,11 +71,10 @@ class Logger(object):
         self.train_log = loggerconfig(os.path.join(self.task.task_save_dir, 'trainlog.txt'), verbose, 'trainlog')
         self.test_log = loggerconfig(os.path.join(self.task.task_save_dir, 'testlog.txt'), verbose+1, 'testlog')
 
-    def record(self, i_iter, update_log):
+    def record(self, i_iter, update_log, show_r_range=False):
         """SummaryWriter in TensorboardX, run 'tensorboard --logdir runs'.
         """
         reward_dict = {}
-        action_dict = {}
         if not update_log:
             self.write("Empty updating log!", 4)
             return
@@ -83,14 +82,18 @@ class Logger(object):
         for tag, value in update_log.items():
             if "reward" in tag:
                 reward_dict[tag] = value
-            elif "action" in tag:
-                action_dict[tag] = value
+            if "action" in tag:
+                continue
             else:
                 self.writer.add_scalar(tag, value, i_iter)
 
         if 'total_reward' in reward_dict.keys():
             del reward_dict['total_reward']
-        self.writer.add_scalars('reward', reward_dict, i_iter)
+
+        if show_r_range:
+            self.writer.add_scalars('reward', reward_dict, i_iter)
+        else:
+            self.writer.add_scalar('avg_reward', reward_dict['avg_reward'], i_iter)
 
     def summary(self, msg, verbose=3):
         if verbose == 3:

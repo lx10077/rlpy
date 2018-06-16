@@ -7,6 +7,10 @@ Forked from https://github.com/Khrylx/PyTorch-RL and modification made.
 ```
 export OMP_NUM_THREADS=1
 ```
+- Code structure: [Agent](https://github.com/lx10077/rlpy/blob/master/core/agent.py) collects samples,
+[Trainer](https://github.com/lx10077/rlpy/blob/master/core/trainer.py) facilitates learning and training,
+[Evaluator](https://github.com/lx10077/rlpy/blob/master/core/evaluator.py) tests trained models in new environments.
+
 
 ## Policy Gradient Methods
 * [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf) -> [examples/trpo_gym.py](https://github.com/lx10077/rlpy/blob/master/examples/trpo_gym.py)
@@ -14,7 +18,7 @@ export OMP_NUM_THREADS=1
 * [Synchronous A3C (A2C)](https://arxiv.org/pdf/1602.01783.pdf) -> [examples/a2c_gym.py](https://github.com/lx10077/rlpy/blob/master/examples/a2c_gym.py)
 
 ### Example
-* python examples/ppo_gym.py --env-name Hopper-v1
+* python examples/ppo_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-interval 50 --eval-model-interval 10
 
 ### Reference
 * [Khrylx/PyTorch-RL](https://github.com/Khrylx/PyTorch-RL)

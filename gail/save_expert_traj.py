@@ -8,9 +8,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from itertools import count
 from utils import *
 from torch.autograd import Variable
+from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
 
-Tensor = DoubleTensor
-torch.set_default_tensor_type('torch.DoubleTensor')
 
 parser = argparse.ArgumentParser(description='Save expert trajectory')
 parser.add_argument('--env-name', default="Hopper-v1", metavar='G',
@@ -25,14 +24,28 @@ parser.add_argument('--max-expert-state-num', type=int, default=50000, metavar='
                     help='maximal number of main iterations (default: 50000)')
 args = parser.parse_args()
 
+
 env = gym.make(args.env_name)
 set_seed(args.seed)
+torch.set_default_tensor_type('torch.DoubleTensor')
 state_dim, action_dim, is_disc_action = get_gym_info(env)
+
+running_state = ZFilter((state_dim,), clip=5)
+
+# Define actor, critic and their optimizers
+if is_disc_action:
+    policy_net = DiscretePolicy(state_dim, action_dim)
+else:
+    policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+
+
+
+
 
 try:
     policy_net, _, running_state = pickle.load(open(args.model_path, "rb"))
 except Exception as e:
-    info_print('Error', 'Fail to load saved model and running states.')
+    info_print('Error', 'Fail to load saved expert trajectories.')
     raise Exception(e)
 expert_traj = []
 

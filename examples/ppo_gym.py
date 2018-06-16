@@ -13,7 +13,7 @@ from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticEvaluator
 
 parser = argparse.ArgumentParser(description='PyTorch PPO example')
-parser.add_argument('--env-name', default="HalfCheetah-v2", metavar='G',
+parser.add_argument('--env-name', default="Hopper-v2", metavar='G',
                     help='name of the environment to run')
 parser.add_argument('--model-path', metavar='G',
                     help='path of pre-trained model')
@@ -47,9 +47,9 @@ parser.add_argument('--max-iter-num', type=int, default=1000, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 10)')
-parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
+parser.add_argument('--save-model-interval', type=int, default=100, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
-parser.add_argument('--eval-model-interval', type=int, default=5, metavar='N',
+parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -70,7 +70,9 @@ if is_disc_action:
     policy_net = DiscretePolicy(state_dim, action_dim)
 else:
     policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+# value_net = ValueFunction(state_dim)
 value_net = ValueFunction(state_dim)
+
 
 if use_gpu:
     policy_net = policy_net.cuda()
@@ -84,4 +86,4 @@ agent = ActorCriticAgent("ClipPPO", env_factory, policy_net, value_net, cfg, run
 clip_ppo = ClipPpoUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
 evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, clip_ppo, cfg, evaluator)
-trainer.start(True)
+trainer.start()
