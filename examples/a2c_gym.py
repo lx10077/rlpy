@@ -7,9 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import *
 from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
 from models.mlp_critic import ValueFunction
-from torch.autograd import Variable
 from core.a2c import A2cUpdater
-from core.common import estimate_advantages
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticEvaluator

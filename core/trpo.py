@@ -133,3 +133,18 @@ class TrpoUpdater(object):
         set_flat_params_to(self.policy_net, new_params)
 
         return log
+
+    def state_dict(self):
+        return {"max_kl": self.max_kl,
+                "damping": self.damping,
+                "l2_reg": self.l2_reg,
+                "nsteps": self.nsteps,
+                "use_fim": self.use_fim}
+
+    def load_state_dict(self, state_dict):
+        self.max_kl = state_dict["max_kl"]
+        self.damping = state_dict["damping"]
+        self.l2_reg = state_dict["l2_reg"]
+        self.nsteps = state_dict["nsteps"]
+        self.use_fim = state_dict["use_fim"]
+        self.Fvp = self.fvp_fim if self.use_fim else self.fvp_direct

@@ -89,3 +89,11 @@ class ClipPpoUpdater(object):
                 log = self.update_policy(states_b, actions_b, advantages_b, fixed_log_probs_b, log)
 
         return log
+
+    def state_dict(self):
+        return {'optimizer_policy': self.optimizer_policy.state_dict(),
+                'optimizer_value': self.optimizer_value.state_dict()}
+
+    def load_state_dict(self, state_dict):
+        self.optimizer_policy.load_state_dict(state_dict['optimizer_policy'])
+        self.optimizer_value.load_state_dict(state_dict['optimizer_value'])

@@ -84,4 +84,4 @@ agent = ActorCriticAgent("ClipPPO", env_factory, policy_net, value_net, cfg, run
 clip_ppo = ClipPpoUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
 evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, clip_ppo, cfg, evaluator)
-trainer.start()
+trainer.start(True)

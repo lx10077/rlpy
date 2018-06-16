@@ -170,7 +170,7 @@ class ZFilter(object):
             x = np.clip(x, -self.clip, self.clip)
         return x
 
-    def state_dict(self):
+    def save_dict(self):
         return {"demean": self.demean, "destd": self.destd, "clip": self.clip}
 
     def set_state(self, state_dict):
@@ -178,14 +178,14 @@ class ZFilter(object):
         self.destd = state_dict["destd"]
         self.clip = state_dict["clip"]
 
-    def save_dict(self):
-        return {"Zfilter": self.state_dict(),
+    def state_dict(self):
+        return {"Zfilter": self.save_dict(),
                 "RuningStat": self.rs.state_dict()}
 
-    def load(self, save_dict):
-        if "Zfilter" in save_dict:
-            print("[Load] Load Zfilter...")
-            self.set_state(save_dict["Zfilter"])
-        if "RuningStat" in save_dict:
-            print("[Load] Load RunningStat...")
-            self.rs.set_state(save_dict["RuningStat"])
+    def load_state_dict(self, state_dict):
+        if "Zfilter" in state_dict:
+            print("[Load]     Load Zfilter...")
+            self.set_state(state_dict["Zfilter"])
+        if "RuningStat" in state_dict:
+            print("[Load]     Load RunningStat...")
+            self.rs.set_state(state_dict["RuningStat"])

@@ -100,6 +100,9 @@ class ActorCriticAgent(object):
         batch["value_targets"] = value_targets
         return batch
 
+    def add_model(self, name, model):
+        self.model_dict.update({name: model})
+
 
 # ====================================================================================== #
 # Functions to collect samples

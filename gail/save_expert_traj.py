@@ -77,6 +77,6 @@ if __name__ == "__main__":
     main_loop()
     save_dict = {"traj": np.stack(expert_traj),
                  "running state": running_state}
-    save_path = os.path.join(asset_dir(), 'expert_traj/{}_expert_traj.p'.format(args.env_name))
+    save_path = os.path.join(asset_dir, 'expert_traj/{}_expert_traj.p'.format(args.env_name))
     with open(save_path, 'wb') as f:
         pickle.dump(save_dict, f)

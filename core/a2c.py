@@ -44,3 +44,11 @@ class A2cUpdater(object):
         self.optimizer_policy.step()
 
         return log
+
+    def state_dict(self):
+        return {'optimizer_policy': self.optimizer_policy.state_dict(),
+                'optimizer_value': self.optimizer_value.state_dict()}
+
+    def load_state_dict(self, state_dict):
+        self.optimizer_policy.load_state_dict(state_dict['optimizer_policy'])
+        self.optimizer_value.load_state_dict(state_dict['optimizer_value'])

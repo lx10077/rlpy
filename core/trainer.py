@@ -28,7 +28,10 @@ class ActorCriticTrainer(object):
         self.eval_model_interval = cfg["eval_model_interval"]
         self.begin_i = 0
 
-    def start(self, every_save=False):
+    def start(self, save_every=False):
+        if self.find_checkpoint('latest'):
+            self.load_checkpoint('latest')
+
         while self.iter_i < self.max_iter_num:
             batch, train_log = self.agent.collect_samples(self.min_batch_size)
             batch = self.agent.batch2tensor(batch)
@@ -54,22 +57,50 @@ class ActorCriticTrainer(object):
 
             if self.save_model_interval > 0 and (self.iter_i + 1) % self.save_model_interval == 0:
                 self.save_checkpoint('iter-' + str(self.iter_i))
+                if not save_every:
+                    self.save_checkpoint('latest')
 
-            if every_save:
+            if save_every:
                 self.save_checkpoint('latest')
             self.iter_i += 1
 
         self.log.write('Complete training: {:d} -> {:d}.'.format(self.begin_i, self.max_iter_num), 3)
 
-    def save_checkpoint(self, name):
-        self.log.write('Saving the {} checkpoint...'.format(name), 3)
+    def find_checkpoint(self, name):
         file = os.path.join(self.model_dir, name)
-        save_dict = {}
+        if os.path.exists(file):
+            return True
+        else:
+            return False
+
+    def model_dict(self):
+        model_dict = {}
         for model, net in self.agent.model_dict.items():
-            save_dict[model] = net.state_dict()
-        if self.agent.running_state is not None:
-            save_dict["running_state"] = self.agent.running_state.save_dict()
+            model_dict[model] = net.state_dict()
+        return model_dict
+
+    def load_model_dict(self, model_dict):
+        for model, net in self.agent.model_dict.items():
+            state_dict = net.state_dict()
+            keys = list(state_dict.keys())
+            for key in keys:
+                try:
+                    state_dict[key] = model_dict[model][key]
+                except KeyError:
+                    self.log.write("{}'s {} isn't in the save dict".format(model, key), 5)
+                    continue
+            net.load_state_dict(state_dict)
+
+    def save_checkpoint(self, name):
+        if name != 'latest':
+            self.log.write('Saving the {} checkpoint...'.format(name), 3)
+        file = os.path.join(self.model_dir, name)
+        save_dict = dict()
+        save_dict['nets'] = self.model_dict()
+        save_dict['optimizers'] = self.updater.state_dict()
         save_dict["iter_i"] = self.iter_i
+        if self.agent.running_state is not None:
+            save_dict["running_state"] = self.agent.running_state.state_dict()
         try:
             torch.save(save_dict, file)
         except Exception as e:
@@ -79,23 +110,12 @@ class ActorCriticTrainer(object):
     def load_checkpoint(self, name="latest"):
         self.log.write('Loading the {} checkpoint...'.format(name), 3)
         file = os.path.join(self.model_dir, name)
+        save_dict = get_state_dict(file)
         try:
-            save_dict = get_state_dict(file)
-            self.iter_i = save_dict["iter_i"]
-            del save_dict["iter_i"]
+            self.load_model_dict(save_dict['nets'])
+            self.updater.load_state_dict(save_dict['optimizers'])
             if "running_state" in save_dict and self.agent.running_state:
-                self.agent.running_state.load(save_dict["running_state"])
-                del save_dict["running_state"]
-            for model, net in self.agent.model_dict.items():
-                state_dict = net.state_dict()
-                keys = list(state_dict.keys())
-                for key in keys:
-                    try:
-                        state_dict[key] = save_dict[model][key]
-                    except KeyError:
-                        self.log.write("{}'s {} isn't in the save dict".format(model, key), 5)
-                        continue
-                net.load_state_dict(state_dict)
+                self.agent.running_state.load_state_dict(save_dict["running_state"])
         except Exception as e:
             self.log.write("Fail to open {}.".format(file), 4)
             raise Exception(e)

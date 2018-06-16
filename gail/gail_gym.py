@@ -2,21 +2,18 @@ import argparse
 import gym
 import os
 import sys
+import pickle
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils import *
-from models.mlp_policy import Policy
-from models.mlp_critic import Value
-from models.mlp_policy_disc import DiscretePolicy
+from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
+from models.mlp_critic import ValueFunction
 from models.mlp_net import Discriminator
-from torch.autograd import Variable
-from torch import nn
-from core.ppo import ppo_step
-from core.common import estimate_advantages
+from core.gail import GailUpdater
 from core.agent import ActorCriticAgent
+from core.trainer import ActorCriticTrainer
+from core.evaluator import ActorCriticEvaluator
 
-Tensor = DoubleTensor
-torch.set_default_tensor_type('torch.DoubleTensor')
 
 parser = argparse.ArgumentParser(description='PyTorch GAIL example')
 parser.add_argument('--env-name', default="Hopper-v1", metavar='G',
@@ -59,43 +56,55 @@ def env_factory(thread_id):
 
 
 set_seed(args.seed)
+torch.set_default_tensor_type('torch.DoubleTensor')
 state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
+running_state = ZFilter((state_dim,), clip=5)
 
-
-# define actor, critic and discrimiator
+# Define actor, critic and discriminator
 if is_disc_action:
-    policy_net = DiscretePolicy(state_dim, env_dummy.action_space.n)
+    policy_net = DiscretePolicy(state_dim, action_dim)
+    action_dim = 1
 else:
-    policy_net = Policy(state_dim, env_dummy.action_space.shape[0])
-value_net = Value(state_dim)
+    policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+value_net = ValueFunction(state_dim)
 discrim_net = Discriminator(state_dim + action_dim)
-discrim_criterion = nn.BCELoss()
+nets = {'policy': policy_net, 'value': value_net, 'discrim': discrim_net}
 
-if use_gpu:
-    policy_net = policy_net.cuda()
-    value_net = value_net.cuda()
-    discrim_net = discrim_net.cuda()
-    discrim_criterion = discrim_criterion.cuda()
+if use_gpu and args.gpu:
+    for name, net in nets.items():
+        nets[name] = net.cuda()
 
+# Define the optimizers of actor, critic and discriminator
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
 optimizer_discrim = torch.optim.Adam(discrim_net.parameters(), lr=args.learning_rate)
+optimizers = {}
 
 # optimization epoch number and batch size for PPO
 optim_epochs = 5
 optim_batch_size = 4096
 
-# load trajectory
+# Load trajectory
 expert_traj, running_state = pickle.load(open(args.expert_traj_path, "rb"))
 
 
 def expert_reward(state, action):
-    state_action = Tensor(np.hstack([state, action]))
+    state_action = np_to_tensor(np.hstack([state, action]))
     return -math.log(discrim_net(Variable(state_action, volatile=True)).data.numpy()[0])
 
 
-agent = ActorCriticAgent('GAIL', env_factory, policy_net, value_net, custom_reward=expert_reward,
-                         running_state=running_state, render=args.render, num_threads=args.num_threads)
+cfg = Cfg(parse=args)
+agent = ActorCriticAgent("Gail", env_factory, policy_net, value_net, cfg,
+                         custom_reward=expert_reward, running_state=running_state)
+agent.add_model('discrim', discrim_net)
+gail = GailUpdater(nets, optimizers, cfg)
+evaluator = ActorCriticEvaluator(agent, cfg)
+trainer = ActorCriticTrainer(agent, gail, cfg, evaluator)
+trainer.start()
+
+
+# agent = ActorCriticAgent('GAIL', env_factory, policy_net, value_net, custom_reward=expert_reward,
+#                          running_state=running_state, render=args.render, num_threads=args.num_threads)
 
 
 def update_params(batch, i_iter):
