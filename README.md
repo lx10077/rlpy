@@ -1,5 +1,5 @@
 # PyTorch implementation of reinforcement learning algorithms
-Forked from https://github.com/Khrylx/PyTorch-RL and modification made.
+Based on https://github.com/Khrylx/PyTorch-RL and some modification made.
 
 ## Important notes
 - To run mujoco environments, first install [mujoco-py](https://github.com/openai/mujoco-py) and my [modified version of gym](https://github.com/Khrylx/gym) which supports mujoco 1.50.
