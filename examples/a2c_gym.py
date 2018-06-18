@@ -79,8 +79,7 @@ optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.lr_policy)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.lr_value)
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("A2c", env_factory, policy_net, value_net, cfg,
-                         distinguish="sep", running_state=running_state)
+agent = ActorCriticAgent("A2c", env_factory, policy_net, value_net, cfg, running_state=running_state)
 a2c = A2cUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
 evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, a2c, cfg, evaluator)

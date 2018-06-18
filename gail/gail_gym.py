@@ -8,8 +8,8 @@ from utils import *
 from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
 from models.mlp_critic import ValueFunction
 from models.mlp_net import Discriminator
+from gail.gail_opt import GailUpdater
 from gail.traj_giver import TrajGiver
-from core.gail import GailUpdater
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticEvaluator
