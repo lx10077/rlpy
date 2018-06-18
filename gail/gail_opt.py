@@ -39,8 +39,8 @@ class GailUpdater(object):
             g_o = self.discrim(torch.cat([states, actions], 1))
             e_o = self.discrim(self.expert_traj)
 
-            loss1 = self.discrim_criterion(g_o, Variable(ones((states.shape[0], 1))))
-            loss2 = self.discrim_criterion(e_o, Variable(zeros((self.expert_traj.shape[0], 1))))
+            loss1 = self.discrim_criterion(g_o, Variable(ones((states.shape[0], 1), self.gpu)))
+            loss2 = self.discrim_criterion(e_o, Variable(zeros((self.expert_traj.shape[0], 1), self.gpu)))
             discrim_loss = loss1 + loss2
             log["discrim_loss"] = discrim_loss.data[0]
 
