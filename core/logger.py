@@ -73,9 +73,16 @@ def loggerconfig(log_file, verbose=2, name='root'):
 class Logger(object):
     def __init__(self, log_id, cfg, verbose=2):
         self.task = Task(log_id, cfg)
+        self.verbose = verbose
         self.writer = SummaryWriter(self.task.event_dir)
         self.train_log = loggerconfig(os.path.join(self.task.task_save_dir, 'trainlog.txt'), verbose, 'trainlog')
-        self.test_log = loggerconfig(os.path.join(self.task.task_save_dir, 'testlog.txt'), verbose+1, 'testlog')
+        self.ready_for_test = False
+        self.test_log = None
+
+    def prepare_for_test(self):
+        self.ready_for_test = True
+        self.task.make_summary_dir()
+        self.test_log = loggerconfig(os.path.join(self.task.task_save_dir, 'testlog.txt'), self.verbose+1, 'testlog')
 
     def record(self, i_iter, update_log, show_r_range=False):
         """SummaryWriter in TensorboardX, run
@@ -106,6 +113,7 @@ class Logger(object):
             self.writer.add_scalar('avg_reward', reward_dict['avg_reward'], i_iter)
 
     def summary(self, msg, verbose=3):
+        assert self.ready_for_test
         if verbose == 3:
             self.test_log.info(msg)
         elif verbose == 4:

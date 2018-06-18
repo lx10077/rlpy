@@ -30,6 +30,10 @@ parser.add_argument('--gpu', action='store_true', default=False,
                     help='use gpu(default: False)')
 parser.add_argument('--l2-reg', type=float, default=1e-3, metavar='G',
                     help='l2 regularization regression (default: 1e-3)')
+parser.add_argument('--max-kl', type=float, default=1e-2, metavar='G',
+                    help='max kl value (default: 1e-2)')
+parser.add_argument('--damping', type=float, default=1e-2, metavar='G',
+                    help='damping (default: 1e-2)')
 parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
                     help='number of updates in each timestep (default: 5)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',

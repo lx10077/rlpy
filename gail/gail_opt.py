@@ -14,6 +14,7 @@ class GailUpdater(object):
         self.discrim_criterion = torch.nn.BCELoss()
         self.expert_traj = None
         self.gpu = cfg['gpu'] if 'gpu' in cfg else False
+        self.num_optim = cfg['num_optim'] if 'num_optim' in cfg else 3
 
         if suboptimizer.lower() == 'ppo':
             self.suboptimizer = ClipPpoUpdater(self.policy, self.value,
@@ -35,7 +36,7 @@ class GailUpdater(object):
 
         states = Variable(batch["states"])
         actions = Variable(batch["actions"])
-        for _ in range(3):
+        for _ in range(self.num_optim):
             g_o = self.discrim(torch.cat([states, actions], 1))
             e_o = self.discrim(self.expert_traj)
 

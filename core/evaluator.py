@@ -28,8 +28,8 @@ class ActorCriticEvaluator(object):
 
     def set_logger(self, log):
         self.log = log
-        if not self.log.task.make_summary:
-            self.log.task.make_summary_dir()
+        if not self.log.ready_for_test:
+            self.log.prepare_for_test()
         self.summary_dir = self.log.task.summary_dir
 
     def eval(self, iter_i, viz=False):
