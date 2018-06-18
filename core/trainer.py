@@ -1,4 +1,4 @@
-from utils.torch import *
+from utils.torchs import *
 from core.logger import Logger
 import time
 import os
@@ -33,6 +33,7 @@ class ActorCriticTrainer(object):
             self.load_checkpoint('latest')
 
         while self.iter_i < self.max_iter_num:
+
             batch, train_log = self.agent.collect_samples(self.min_batch_size)
             batch = self.agent.batch2tensor(batch)
             t0 = time.time()

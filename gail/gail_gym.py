@@ -26,6 +26,8 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.95, metavar='G',
                     help='gae (default: 0.95)')
+parser.add_argument('--gpu', action='store_true', default=False,
+                    help='use gpu(default: False)')
 parser.add_argument('--l2-reg', type=float, default=1e-3, metavar='G',
                     help='l2 regularization regression (default: 1e-3)')
 parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
@@ -46,8 +48,6 @@ parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per PPO update (default: 2048)')
 parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
                     help='maximal number of main iterations (default: 500)')
-parser.add_argument('--log-interval', type=int, default=1, metavar='N',
-                    help='interval between training status logs (default: 10)')
 parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',

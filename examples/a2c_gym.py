@@ -26,6 +26,8 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor (default: 0.99)')
 parser.add_argument('--tau', type=float, default=0.95, metavar='G',
                     help='gae (default: 0.95)')
+parser.add_argument('--gpu', action='store_true', default=False,
+                    help='use gpu(default: False)')
 parser.add_argument('--learning-rate', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 7e-4)')
 parser.add_argument('-lr-policy', type=float, default=9e-4, metavar='G',
@@ -42,8 +44,6 @@ parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per A2C update (default: 2048)')
 parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
                     help='maximal number of main iterations (default: 500)')
-parser.add_argument('--log-interval', type=int, default=1, metavar='N',
-                    help='interval between training status logs (default: 1)')
 parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
@@ -69,7 +69,7 @@ else:
     policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
 value_net = ValueFunction(state_dim)
 
-if use_gpu:
+if use_gpu and args.gpu:
     policy_net = policy_net.cuda()
     value_net = value_net.cuda()
 

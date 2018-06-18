@@ -17,11 +17,15 @@ class Task(object):
         self.cfg = cfg
         self.task_save_dir = set_dir(config_dir, self.name)
         self.set_subfiles()
+        self.make_summary = False
 
     def set_subfiles(self):
         self.cfg.save_config(os.path.join(self.task_save_dir, 'cfg.json'))
         set_dir(self.task_save_dir, 'models')
         set_dir(self.task_save_dir, 'train.events')
+
+    def make_summary_dir(self):
+        self.make_summary = True
         set_dir(self.task_save_dir, 'result_summary')
 
     @property
@@ -34,6 +38,8 @@ class Task(object):
 
     @property
     def summary_dir(self):
+        if not self.make_summary:
+            print("[Warning]   Didn't make summary dir.")
         return os.path.join(self.task_save_dir, 'result_summary')
 
 
@@ -72,7 +78,11 @@ class Logger(object):
         self.test_log = loggerconfig(os.path.join(self.task.task_save_dir, 'testlog.txt'), verbose+1, 'testlog')
 
     def record(self, i_iter, update_log, show_r_range=False):
-        """SummaryWriter in TensorboardX, run 'tensorboard --logdir runs'.
+        """SummaryWriter in TensorboardX, run
+
+            'tensorboard --logdir=train_log/config'
+
+            to monitor training process.
         """
         reward_dict = {}
         if not update_log:

@@ -1,6 +1,6 @@
 import multiprocessing
 from utils.memory import NoLimitSequentialMemory
-from utils.torch import *
+from utils.torchs import *
 from utils.tools import *
 import math
 import time

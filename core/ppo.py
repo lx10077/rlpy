@@ -1,4 +1,4 @@
-from utils.torch import *
+from utils.torchs import *
 
 
 class ClipPpoUpdater(object):

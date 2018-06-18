@@ -1,6 +1,6 @@
 from core.ppo import ClipPpoUpdater
 from core.trpo import TrpoUpdater
-from utils.torch import *
+from utils.torchs import *
 
 
 class GailUpdater(object):

@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 
@@ -114,7 +113,7 @@ def get_state_dict(file):
 
 def get_out_dim(module, indim):
     if isinstance(module, list):
-        module = nn.Sequential(*module)
+        module = torch.nn.Sequential(*module)
     fake_input = Variable(torch.zeros(indim).unsqueeze(0))
     output_size = module(fake_input).view(-1).size()[0]
     return output_size
