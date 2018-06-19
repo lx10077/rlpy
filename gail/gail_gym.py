@@ -110,7 +110,7 @@ agent = ActorCriticAgent("Gail", env_factory, policy_net, value_net, cfg,
 agent.add_model('discrim', discrim_net)
 
 # Load or make expert trajectory
-expert_dl = TrajGiver(cfg)()
+expert_dl = TrajGiver(cfg)(prefer='clipppo')
 
 gail = GailUpdater(nets, optimizers, cfg)
 gail.load_traj(expert_dl)

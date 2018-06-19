@@ -43,7 +43,7 @@ class TrajGiver(object):
     def __init__(self, cfg):
         self.cfg = cfg
         self.batch_size = cfg['min_batch_size']
-        self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 50000
+        self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 500000
 
     def __call__(self, expert_path=None, prefer='clipppo'):
         possible_traj_dir = os.path.join(assetdir, 'expert_traj/{}-expert-traj.p'.format(self.cfg['env_name']))
@@ -107,7 +107,7 @@ class TrajGiver(object):
         else:
             return None, policy_net
 
-    def make_traj(self, env, policy_net, running_state=None, render=False):
+    def make_traj(self, env, policy_net, running_state=None, render=False, threshold=3500):
         num_steps = 0
         expert_traj = []
         for i_episode in count():
@@ -115,8 +115,9 @@ class TrajGiver(object):
             if running_state is not None:
                 state = running_state(state, False)
             reward_episode = 0
+            traj_episode = []
 
-            for _ in range(10000):
+            for episode_step in range(10000):
                 state_var = Variable(np_to_tensor(state).unsqueeze(0), volatile=True)
                 # choose mean action
                 action = policy_net(state_var)[0].data[0].cpu().numpy()
@@ -131,7 +132,7 @@ class TrajGiver(object):
                 reward_episode += reward
                 num_steps += 1
 
-                expert_traj.append(np.hstack([state, action]))
+                traj_episode.append(np.hstack([state, action]))
 
                 if render:
                     env.render()
@@ -143,6 +144,12 @@ class TrajGiver(object):
             info_print('Info', 'Episode {}\t reward: {:.2f}\t num step: {}'.format(
                 i_episode, reward_episode, num_steps)
                        )
+
+            if reward_episode >= threshold:
+                expert_traj.extend(traj_episode)
+            else:
+                info_print('Info', 'Discard it...')
+                num_steps -= episode_step
 
             if num_steps >= self.max_expert_state_num:
                 break
