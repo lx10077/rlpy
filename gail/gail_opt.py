@@ -1,5 +1,6 @@
 from core.ppo import ClipPpoUpdater
 from core.trpo import TrpoUpdater
+from torch.utils.data import DataLoader
 from utils.torchs import *
 
 
@@ -12,9 +13,9 @@ class GailUpdater(object):
         self.optimizer_value = optimizers['optimizer_value']
         self.optimizer_discrim = optimizers['optimizer_discrim']
         self.discrim_criterion = torch.nn.BCELoss()
-        self.expert_traj = None
+        self.expert_dl = None
         self.gpu = cfg['gpu'] if 'gpu' in cfg else False
-        self.num_optim = cfg['num_optim'] if 'num_optim' in cfg else 3
+        self.optim_discrim_iternum = cfg['optim_discrim_iternum'] if 'noptim_discrim_iternum' in cfg else 1
 
         if suboptimizer.lower() == 'ppo':
             self.suboptimizer = ClipPpoUpdater(self.policy, self.value,
@@ -24,25 +25,27 @@ class GailUpdater(object):
         else:
             raise TypeError('{} is NOT surpported.'.format(suboptimizer))
 
-    def set_traj(self, expert_traj):
-        if isinstance(expert_traj, list):
-            expert_traj = np.array(expert_traj)
-        self.expert_traj = np_to_var(expert_traj)
-        if torch.cuda.is_available() and self.gpu:
-            self.expert_traj = self.expert_traj.cuda()
+    def load_traj(self, expert_dl):
+        assert isinstance(expert_dl, DataLoader)
+        self.expert_dl = expert_dl
 
     def __call__(self, batch, log, *args, **kwargs):
         log = self.suboptimizer(batch, log, *args, **kwargs)
 
         states = Variable(batch["states"])
         actions = Variable(batch["actions"])
-        for _ in range(self.num_optim):
-            g_o = self.discrim(torch.cat([states, actions], 1))
-            e_o = self.discrim(self.expert_traj)
+        expert_traj = Variable(iter(self.expert_dl).next())
 
-            loss1 = self.discrim_criterion(g_o, Variable(ones((states.shape[0], 1), self.gpu)))
-            loss2 = self.discrim_criterion(e_o, Variable(zeros((self.expert_traj.shape[0], 1), self.gpu)))
-            discrim_loss = loss1 + loss2
+        valid = Variable(ones((expert_traj.shape[0], 1), self.gpu and use_gpu))
+        fake = Variable(zeros((states.shape[0], 1), self.gpu and use_gpu))
+
+        for _ in range(self.optim_discrim_iternum):
+
+            # Sample a minibatch of expert trajectories
+            gen_o = self.discrim(torch.cat([states, actions], 1))
+            expert_o = self.discrim(expert_traj)
+
+            discrim_loss = self.discrim_criterion(expert_o, valid) + self.discrim_criterion(gen_o, fake)
             log["discrim_loss"] = discrim_loss.data[0]
 
             self.optimizer_discrim.zero_grad()

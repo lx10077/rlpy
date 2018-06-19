@@ -20,11 +20,11 @@ def cuda_var(tensor, gpu=False, *args, **kwargs):
         return torch.autograd.Variable(tensor, *args, **kwargs)
 
 
-def ones(*shape, gpu=False):
+def ones(shape, gpu=False):
     return torch.ones(*shape).cuda() if use_gpu and gpu else torch.ones(*shape)
 
 
-def zeros(*shape, gpu=False):
+def zeros(shape, gpu=False):
     return torch.zeros(*shape).cuda() if use_gpu and gpu else torch.zeros(*shape)
 
 

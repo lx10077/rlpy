@@ -34,6 +34,8 @@ parser.add_argument('--max-kl', type=float, default=1e-2, metavar='G',
                     help='max kl value (default: 1e-2)')
 parser.add_argument('--damping', type=float, default=1e-2, metavar='G',
                     help='damping (default: 1e-2)')
+parser.add_argument('--optim-discrim-iternum', type=int, default=5, metavar='N',
+                    help='number of discrim updates in each timestep (default: 5)')
 parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
                     help='number of updates in each timestep (default: 5)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
@@ -54,7 +56,7 @@ parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 1)')
-parser.add_argument('--save-model-interval', type=int, default=0, metavar='N',
+parser.add_argument('--save-model-interval', type=int, default=100, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
@@ -108,10 +110,10 @@ agent = ActorCriticAgent("Gail", env_factory, policy_net, value_net, cfg,
 agent.add_model('discrim', discrim_net)
 
 # Load or make expert trajectory
-expert_traj = TrajGiver(cfg)()
+expert_dl = TrajGiver(cfg)()
 
 gail = GailUpdater(nets, optimizers, cfg)
-gail.set_traj(expert_traj)
+gail.load_traj(expert_dl)
 
 evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, gail, cfg, evaluator)

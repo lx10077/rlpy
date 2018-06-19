@@ -1,4 +1,6 @@
 from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
+from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import RandomSampler
 from itertools import count
 from utils import *
 import gym
@@ -6,25 +8,55 @@ import pickle
 import glob
 
 
+class ExpertDataset(Dataset):
+    def __init__(self, expert_traj, batch_size):
+        self.expert_traj = expert_traj
+        self.batch_size = batch_size
+
+    def __len__(self):
+        return self.expert_traj.shape[0]
+
+    def __getitem__(self, index):
+        return np_to_tensor(self.expert_traj[index])
+
+
+def get_expert_loader(batch_size, expert_traj=None, expert_path=None):
+    if expert_traj is not None:
+        expert_ds = ExpertDataset(expert_traj, batch_size)
+    elif expert_path is not None:
+        try:
+            with open(expert_path, 'rb') as f:
+                expert_traj = pickle.load(f)
+        except Exception as e:
+            raise Exception(e)
+        expert_ds = ExpertDataset(expert_traj, batch_size)
+    else:
+        raise ValueError('No input.')
+    expert_dl = DataLoader(expert_ds,
+                           batch_size=batch_size,
+                           sampler=RandomSampler(expert_ds),
+                           drop_last=True)
+    return expert_dl
+
+
 class TrajGiver(object):
     def __init__(self, cfg):
         self.cfg = cfg
+        self.batch_size = cfg['min_batch_size']
         self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 50000
 
-    def __call__(self, expert_path=None):
+    def __call__(self, expert_path=None, prefer='clipppo'):
         possible_traj_dir = os.path.join(assetdir, 'expert_traj/{}-expert-traj.p'.format(self.cfg['env_name']))
-        print('[Info]      Find export data in {}.'.format(possible_traj_dir))
         if os.path.exists(possible_traj_dir):
-            with open(possible_traj_dir, 'rb') as f:
-                traj = pickle.load(f)
-            return traj
+            print('[Info]      Find export data in {}.'.format(possible_traj_dir))
+            return get_expert_loader(self.batch_size, expert_path=possible_traj_dir)
         else:
             env, running_state, policy_net = self.set_policy()
-            path = self.find_expert(expert_path)
+            path = self.find_expert(expert_path, prefer=prefer)
             running_state, policy_net = self.load_expert(path, running_state, policy_net)
             traj = self.make_traj(env, policy_net, running_state)
             self.save_traj(traj)
-            return traj
+            return get_expert_loader(self.batch_size, expert_traj=traj)
 
     def set_policy(self):
         env = gym.make(self.cfg['env_name'])
@@ -39,7 +71,7 @@ class TrajGiver(object):
             policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=self.cfg['log_std'])
         return env, running_state, policy_net
 
-    def find_expert(self, expert_path):
+    def find_expert(self, expert_path, prefer='clipppo'):
         if expert_path is not None:
             return expert_path
         else:
@@ -54,7 +86,7 @@ class TrajGiver(object):
                 return None
 
             for name in possible_expert.keys():
-                if 'clipppo' in name.lower():
+                if prefer in name.lower():
                     candidate = possible_expert[name]
                     break
             else:
