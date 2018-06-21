@@ -7,6 +7,7 @@ class TrpoUpdater(object):
     def __init__(self, policy_net, value_net, cfg, use_fim=False):
         self.policy_net = policy_net
         self.value_net = value_net
+        self.gpu = cfg["gpu"]
         self.max_kl = cfg["max_kl"]
         self.damping = cfg["damping"]
         self.l2_reg = cfg["l2_reg"]
@@ -34,7 +35,7 @@ class TrpoUpdater(object):
         return action_loss.mean()
 
     def conjugate_gradients(self, b, rdotr_tol=1e-10):
-        x = torch.zeros(b.size())
+        x = zeros(b.size(), use_gpu and self.gpu)
         r = b.clone()
         p = b.clone()
         rdotr = torch.dot(r, r)

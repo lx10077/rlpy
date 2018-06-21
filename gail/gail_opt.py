@@ -12,7 +12,11 @@ class GailUpdater(object):
         self.optimizer_policy = optimizers['optimizer_policy']
         self.optimizer_value = optimizers['optimizer_value']
         self.optimizer_discrim = optimizers['optimizer_discrim']
-        self.discrim_criterion = torch.nn.BCELoss()
+        if use_gpu and cfg['gpu']:
+            self.discrim_criterion = torch.nn.BCELoss().cuda()
+        else:
+            self.discrim_criterion = torch.nn.BCELoss()
+
         self.expert_dl = None
         self.gpu = cfg['gpu'] if 'gpu' in cfg else False
         self.optim_discrim_iternum = cfg['optim_discrim_iternum'] if 'noptim_discrim_iternum' in cfg else 1
@@ -35,9 +39,11 @@ class GailUpdater(object):
         states = Variable(batch["states"])
         actions = Variable(batch["actions"])
         expert_traj = Variable(iter(self.expert_dl).next())
+        if use_gpu and self.gpu:
+            expert_traj = expert_traj.cuda()
 
-        valid = Variable(ones((expert_traj.shape[0], 1), self.gpu and use_gpu))
-        fake = Variable(zeros((states.shape[0], 1), self.gpu and use_gpu))
+        fake = Variable(zeros((expert_traj.shape[0], 1), self.gpu and use_gpu))
+        valid = Variable(ones((states.shape[0], 1), self.gpu and use_gpu))
 
         for _ in range(self.optim_discrim_iternum):
 
@@ -45,7 +51,7 @@ class GailUpdater(object):
             gen_o = self.discrim(torch.cat([states, actions], 1))
             expert_o = self.discrim(expert_traj)
 
-            discrim_loss = self.discrim_criterion(expert_o, valid) + self.discrim_criterion(gen_o, fake)
+            discrim_loss = self.discrim_criterion(expert_o, fake) + self.discrim_criterion(gen_o, valid)
             log["discrim_loss"] = discrim_loss.data[0]
 
             self.optimizer_discrim.zero_grad()

@@ -36,7 +36,7 @@ class ActorCriticAgent(object):
     def collect_samples(self, min_batch_size):
         t_start = time.time()
         if use_gpu and self.gpu:
-            self.policy.cpu()
+            self.place_models_on_cpu()
 
         thread_batch_size = int(math.floor(min_batch_size / self.num_threads))
         queue = multiprocessing.Queue()
@@ -67,7 +67,7 @@ class ActorCriticAgent(object):
             log = merge_log(log_list)
 
         if use_gpu and self.gpu:
-            self.policy.cuda()
+            self.place_models_on_gpu()
 
         t_end = time.time()
         log['sample_time'] = t_end - t_start
@@ -100,6 +100,16 @@ class ActorCriticAgent(object):
 
     def add_model(self, name, model):
         self.model_dict.update({name: model})
+
+    def place_models_on_cpu(self):
+        self.policy.cpu()
+        if 'discrim' in self.model_dict:
+            self.model_dict['discrim'] = self.model_dict['discrim'].cpu()
+
+    def place_models_on_gpu(self):
+        self.policy.cuda()
+        if 'discrim' in self.model_dict:
+            self.model_dict['discrim'] = self.model_dict['discrim'].cuda()
 
 
 # ====================================================================================== #

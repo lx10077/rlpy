@@ -43,7 +43,7 @@ class TrajGiver(object):
     def __init__(self, cfg):
         self.cfg = cfg
         self.batch_size = cfg['min_batch_size']
-        self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 500000
+        self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 100000
 
     def __call__(self, expert_path=None, prefer='clipppo'):
         possible_traj_dir = os.path.join(assetdir, 'expert_traj/{}-expert-traj.p'.format(self.cfg['env_name']))
@@ -76,7 +76,7 @@ class TrajGiver(object):
             return expert_path
         else:
             possible_expert = {}
-            for file_dir in glob.glob(os.path.join(trainlogdir, 'config/*')):
+            for file_dir in glob.glob(os.path.join(trainlogdir, 'config/' + self.cfg['env_name'] + '/*')):
                 full_name = os.path.basename(file_dir)
                 config_name = '-'.join(full_name.split('-')[:2])
                 if config_name == self.cfg['env_name']:
@@ -107,14 +107,14 @@ class TrajGiver(object):
         else:
             return None, policy_net
 
-    def make_traj(self, env, policy_net, running_state=None, render=False, threshold=3500):
+    def make_traj(self, env, policy_net, running_state=None, render=False, threshold=0):
         num_steps = 0
         expert_traj = []
         for i_episode in count():
             state = env.reset()
             if running_state is not None:
                 state = running_state(state, False)
-            reward_episode = 0
+            reward_episode, episode_step = 0, 0
             traj_episode = []
 
             for episode_step in range(10000):
@@ -144,6 +144,9 @@ class TrajGiver(object):
             info_print('Info', 'Episode {}\t reward: {:.2f}\t num step: {}'.format(
                 i_episode, reward_episode, num_steps)
                        )
+
+            if threshold == 0:
+                threshold = reward_episode * 0.95
 
             if reward_episode >= threshold:
                 expert_traj.extend(traj_episode)
