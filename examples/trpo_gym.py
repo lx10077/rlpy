@@ -38,6 +38,7 @@ parser.add_argument('--num-threads', type=int, default=4, metavar='N',
                     help='number of threads for agent (default: 4)')
 parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
+parser.add_argument('--dis', type=str, default='')
 parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per TRPO update (default: 2048)')
 parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
@@ -75,7 +76,7 @@ if use_gpu and args.gpu:
 
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("Trpo", env_factory, policy_net, value_net, cfg, running_state=running_state)
+agent = ActorCriticAgent("Trpo" + args.dis, env_factory, policy_net, value_net, cfg, running_state=running_state)
 trpo = TrpoUpdater(policy_net, value_net, cfg, use_fim=False)
 evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, trpo, cfg, evaluator)

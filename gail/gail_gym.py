@@ -34,8 +34,12 @@ parser.add_argument('--max-kl', type=float, default=1e-2, metavar='G',
                     help='max kl value (default: 1e-2)')
 parser.add_argument('--damping', type=float, default=1e-2, metavar='G',
                     help='damping (default: 1e-2)')
-parser.add_argument('--optim-discrim-iternum', type=int, default=5, metavar='N',
-                    help='number of discrim updates in each timestep (default: 5)')
+parser.add_argument('--threshold', type=int, default=0, metavar='T',
+                    help='threshold to be an expert trajectory (default: 0, means choose the first one)')
+parser.add_argument('--algo', type=str, default='clipppo', metavar='T', choices=['clipppo', 'trpo'],
+                    help="which algo to optimize params from (default: clipppo)")
+parser.add_argument('--optim-discrim-iternum', type=int, default=3, metavar='N',
+                    help='number of discrim updates in each timestep (default: 3)')
 parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
                     help='number of updates in each timestep (default: 5)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
@@ -50,6 +54,7 @@ parser.add_argument('--num-threads', type=int, default=4, metavar='N',
                     help='number of threads for agent (default: 4)')
 parser.add_argument('--seed', type=int, default=1, metavar='N',
                     help='random seed (default: 1)')
+parser.add_argument('--dis', type=str, default='')
 parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per PPO update (default: 2048)')
 parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
@@ -72,7 +77,8 @@ def env_factory(thread_id):
 set_seed(args.seed)
 torch.set_default_tensor_type('torch.DoubleTensor')
 state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
-running_state = ZFilter((state_dim,), clip=5)
+# running_state = ZFilter((state_dim,), clip=5)
+running_state = None
 
 # Define actor, critic and discriminator
 if is_disc_action:
@@ -105,12 +111,12 @@ def expert_reward(state, action):
 
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("Gail", env_factory, policy_net, value_net, cfg,
+agent = ActorCriticAgent("Gail" + args.dis, env_factory, policy_net, value_net, cfg,
                          custom_reward=expert_reward, running_state=running_state)
 agent.add_model('discrim', discrim_net)
 
 # Load or make expert trajectory
-expert_dl = TrajGiver(cfg)(prefer='clipppo')
+expert_dl = TrajGiver(cfg)(prefer=args.algo, threshold=args.threshold)
 
 gail = GailUpdater(nets, optimizers, cfg)
 gail.load_traj(expert_dl)

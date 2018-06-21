@@ -31,6 +31,7 @@ class ActorCriticTrainer(object):
     def start(self, save_every=False):
         if self.find_checkpoint('latest'):
             self.load_checkpoint('latest')
+        self.begin_i = self.iter_i
 
         while self.iter_i < self.max_iter_num:
 
@@ -115,7 +116,7 @@ class ActorCriticTrainer(object):
         try:
             self.load_model_dict(save_dict['nets'])
             self.updater.load_state_dict(save_dict['optimizers'])
-            self.iter_i = save_dict['iter_i']
+            self.iter_i = save_dict['iter_i'] + 1
             if "running_state" in save_dict and self.agent.running_state:
                 self.agent.running_state.load_state_dict(save_dict["running_state"])
         except Exception as e:

@@ -42,8 +42,8 @@ class GailUpdater(object):
         if use_gpu and self.gpu:
             expert_traj = expert_traj.cuda()
 
-        fake = Variable(zeros((expert_traj.shape[0], 1), self.gpu and use_gpu))
         valid = Variable(ones((states.shape[0], 1), self.gpu and use_gpu))
+        fake = Variable(zeros((expert_traj.shape[0], 1), self.gpu and use_gpu))
 
         for _ in range(self.optim_discrim_iternum):
 
@@ -60,9 +60,9 @@ class GailUpdater(object):
         return log
 
     def state_dict(self):
-        return self.suboptimizer.state_dict().update(
-            {'optimizer_discrim': self.optimizer_discrim.state_dict()}
-        )
+        state_dict = self.suboptimizer.state_dict()
+        state_dict['optimizer_discrim'] = self.optimizer_discrim.state_dict()
+        return state_dict
 
     def load_state_dict(self, state_dict):
         self.optimizer_discrim.load_state_dict(state_dict['optimizer_discrim'])

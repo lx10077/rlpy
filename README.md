@@ -42,3 +42,14 @@ will help us generate it. However, make sure the export policy has been generate
 ```
 python gail/gail_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-interval 50 --eval-model-interval 10
 ```
+
+## Results
+
+<p align="middle">
+    <img src="asset/fig/HalfCheetah-v2d4d064d70601468b9e15462f1ccd9de8.png" width="200" />
+    <img src="asset/fig/Hopper-v246fa3ce8dc184a46ac6cc9fa9a09898a.png" width="200" />
+    <img src="asset/fig/Walker2d-v2a6b49e51389044739a1ee7b25db400b9.png" width="200" />
+</p>
+
+
+![HalfCheetah-v2](https://github.com/lx10077/rlpy/blob/master/asset/fig/HalfCheetah-v2d4d064d70601468b9e15462f1ccd9de8.png)![Hopper-v2](https://github.com/lx10077/rlpy/blob/master/asset/fig/Hopper-v246fa3ce8dc184a46ac6cc9fa9a09898a.png)![Walker2d-v2](https://github.com/lx10077/rlpy/blob/master/asset/fig/Walker2d-v2a6b49e51389044739a1ee7b25db400b9.png)

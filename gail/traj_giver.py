@@ -42,10 +42,10 @@ def get_expert_loader(batch_size, expert_traj=None, expert_path=None):
 class TrajGiver(object):
     def __init__(self, cfg):
         self.cfg = cfg
-        self.batch_size = cfg['min_batch_size']
-        self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 100000
+        self.batch_size = 50000
+        self.max_expert_state_num = cfg['max_expert_state_num'] if 'max_expert_state_num' in cfg else 200000
 
-    def __call__(self, expert_path=None, prefer='clipppo'):
+    def __call__(self, expert_path=None, prefer='clipppo', threshold=0):
         possible_traj_dir = os.path.join(assetdir, 'expert_traj/{}-expert-traj.p'.format(self.cfg['env_name']))
         if os.path.exists(possible_traj_dir):
             print('[Info]      Find export data in {}.'.format(possible_traj_dir))
@@ -54,7 +54,7 @@ class TrajGiver(object):
             env, running_state, policy_net = self.set_policy()
             path = self.find_expert(expert_path, prefer=prefer)
             running_state, policy_net = self.load_expert(path, running_state, policy_net)
-            traj = self.make_traj(env, policy_net, running_state)
+            traj = self.make_traj(env, policy_net, running_state, threshold=threshold)
             self.save_traj(traj)
             return get_expert_loader(self.batch_size, expert_traj=traj)
 
@@ -114,8 +114,8 @@ class TrajGiver(object):
             state = env.reset()
             if running_state is not None:
                 state = running_state(state, False)
-            reward_episode, episode_step = 0, 0
-            traj_episode = []
+            episode_reward, episode_step = 0, 0
+            episode_traj = []
 
             for episode_step in range(10000):
                 state_var = Variable(np_to_tensor(state).unsqueeze(0), volatile=True)
@@ -129,10 +129,10 @@ class TrajGiver(object):
                 if running_state is not None:
                     next_state = running_state(next_state, False)
 
-                reward_episode += reward
+                episode_reward += reward
                 num_steps += 1
 
-                traj_episode.append(np.hstack([state, action]))
+                episode_traj.append(np.hstack([state, action]))
 
                 if render:
                     env.render()
@@ -141,18 +141,18 @@ class TrajGiver(object):
 
                 state = next_state
 
-            info_print('Info', 'Episode {}\t reward: {:.2f}\t num step: {}'.format(
-                i_episode, reward_episode, num_steps)
+            info_print('Info', 'Episode {} Steps {} \t reward: {:.2f}\t num step: {}'.format(
+                i_episode, episode_step, episode_reward, num_steps)
                        )
 
             if threshold == 0:
-                threshold = reward_episode * 0.95
+                threshold = episode_reward * 0.95
 
-            if reward_episode >= threshold:
-                expert_traj.extend(traj_episode)
+            if episode_reward >= threshold:
+                expert_traj.extend(episode_traj)
             else:
                 info_print('Info', 'Discard it...')
-                num_steps -= episode_step
+                num_steps -= (episode_step + 1)
 
             if num_steps >= self.max_expert_state_num:
                 break
