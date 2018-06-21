@@ -6,6 +6,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import uuid
+import glob
 save_dir = os.path.join(assetdir, 'fig')
 os.makedirs(save_dir, exist_ok=True)
 
@@ -13,9 +14,9 @@ os.makedirs(save_dir, exist_ok=True)
 def get_reward_from_event(args):
     reward_dict = {}
     base_path = os.path.join(os.path.join(trainlogdir, 'config'), args.env)
-    for file in os.listdir(base_path):
+    for file in glob.glob(os.path.join(base_path, args.env + '-*')):
         algo = file.split('-')[-1].lower()
-        event_file = os.path.join(base_path, file + '/train.events')
+        event_file = os.path.join(file, 'train.events')
         events = os.listdir(event_file)
         rewards = {}
         for event in events:
@@ -52,7 +53,7 @@ def get_reward_from_event(args):
     return reward_dict
 
 
-def plot_reward(reward_dict, title, length, fig_basename, save=True, viz=False):
+def plot_reward(reward_dict, title, length, fig_basename=None, save=True, viz=False):
     plt.figure(figsize=(6, 6))
     MEAN_LENGTH = length // 10
 
@@ -99,4 +100,4 @@ if __name__ == '__main__':
     FLAGS = parser.parse_args()
 
     r_dict = get_reward_from_event(FLAGS)
-    plot_reward(r_dict, FLAGS.env + '-v2', FLAGS.x_len)
+    plot_reward(r_dict, FLAGS.env, FLAGS.x_len, )
