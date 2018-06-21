@@ -1,12 +1,17 @@
-from utils.tools import trainlogdir, assetdir
-import json
 import argparse
-import tensorflow as tf
 import os
-import numpy as np
-import matplotlib.pyplot as plt
+import sys
+import json
 import uuid
 import glob
+import tensorflow as tf
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Force matplotlib to not use any Xwindows backend.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import matplotlib.pyplot as plt
+from utils.tools import trainlogdir, assetdir
+
 save_dir = os.path.join(assetdir, 'fig')
 os.makedirs(save_dir, exist_ok=True)
 
@@ -54,7 +59,11 @@ def get_reward_from_event(args):
 
 
 def plot_reward(reward_dict, title, length, fig_basename=None, save=True, viz=False):
-    plt.figure(figsize=(6, 6))
+    try:
+        plt.figure(figsize=(6, 6))
+    except Exception as e:
+        print(Exception(e))
+
     MEAN_LENGTH = length // 10
 
     for algo, rewards in reward_dict.items():
@@ -85,7 +94,7 @@ def plot_reward(reward_dict, title, length, fig_basename=None, save=True, viz=Fa
     if save:
         if fig_basename is None:
             fig_basename = title + uuid.uuid4().hex + '.png'
-        plt.savefig(os.path.join(save_dir, fig_basename))
+        plt.savefig(os.path.join(save_dir, fig_basename), dpi=300)
 
     if viz:
         plt.show()
@@ -93,10 +102,10 @@ def plot_reward(reward_dict, title, length, fig_basename=None, save=True, viz=Fa
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='Hopper-v2')
+    parser.add_argument('--env', '--env-name', type=str, default='Hopper-v2')
     parser.add_argument('--save_data', action='store_true', default=False)
     parser.add_argument('--show_info', action='store_false', default=True)
-    parser.add_argument('--x_len', type=int, default=500)
+    parser.add_argument('--x_len', type=int, default=670)
     FLAGS = parser.parse_args()
 
     r_dict = get_reward_from_event(FLAGS)
