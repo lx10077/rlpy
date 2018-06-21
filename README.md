@@ -44,12 +44,10 @@ python gail/gail_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-in
 ```
 
 ## Results
-
+We test the code in three Mujoco environments with default parameters. GAIL is quite unstable and needs more iterations
+to reach comparable scores.
 <p align="middle">
-    <img src="asset/fig/HalfCheetah-v2d4d064d70601468b9e15462f1ccd9de8.png" width="200" />
-    <img src="asset/fig/Hopper-v246fa3ce8dc184a46ac6cc9fa9a09898a.png" width="200" />
-    <img src="asset/fig/Walker2d-v2a6b49e51389044739a1ee7b25db400b9.png" width="200" />
+    <img src="asset/fig/HalfCheetah-v2d4d064d70601468b9e15462f1ccd9de8.png" width="290" />
+    <img src="asset/fig/Hopper-v246fa3ce8dc184a46ac6cc9fa9a09898a.png" width="290" />
+    <img src="asset/fig/Walker2d-v2a6b49e51389044739a1ee7b25db400b9.png" width="290" />
 </p>
-
-
-![HalfCheetah-v2](https://github.com/lx10077/rlpy/blob/master/asset/fig/HalfCheetah-v2d4d064d70601468b9e15462f1ccd9de8.png)![Hopper-v2](https://github.com/lx10077/rlpy/blob/master/asset/fig/Hopper-v246fa3ce8dc184a46ac6cc9fa9a09898a.png)![Walker2d-v2](https://github.com/lx10077/rlpy/blob/master/asset/fig/Walker2d-v2a6b49e51389044739a1ee7b25db400b9.png)
