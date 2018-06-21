@@ -15,7 +15,9 @@ class Task(object):
     def __init__(self, agent_id, cfg):
         self.name = agent_id
         self.cfg = cfg
-        self.task_save_dir = set_dir(config_dir, self.name)
+        self.env_name = cfg['env_name']
+        self.game_dir = set_dir(config_dir, self.env_name)
+        self.task_save_dir = set_dir(self.game_dir, self.name)
         self.set_subfiles()
         self.make_summary = False
 

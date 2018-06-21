@@ -10,7 +10,10 @@ export OMP_NUM_THREADS=1
 - Code structure: [Agent](https://github.com/lx10077/rlpy/blob/master/core/agent.py) collects samples;
 [Trainer](https://github.com/lx10077/rlpy/blob/master/core/trainer.py) facilitates learning and training;
 [Evaluator](https://github.com/lx10077/rlpy/blob/master/core/evaluator.py) tests trained models in new environments.
-
+- After training several agents on one environment, you can plot the training process in one figure by
+```
+python utils/plot.py --env-name <ENVIRONMENT NAME> --x_len 500 --save_data
+```
 
 ## Policy Gradient Methods
 * [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf) -> [examples/trpo_gym.py](https://github.com/lx10077/rlpy/blob/master/examples/trpo_gym.py)

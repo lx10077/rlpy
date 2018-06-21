@@ -2,7 +2,6 @@
 # ignored folders
 ######################
 /__pycache__/
-/assets/
 /.idea/
 /train_log/
 

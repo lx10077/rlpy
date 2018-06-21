@@ -10,11 +10,9 @@ import time
 # Agents for actor critic methods
 # ====================================================================================== #
 class ActorCriticAgent(object):
-    def __init__(self, name, env_factory, policy, value, cfg, distinguish=None,
+    def __init__(self, name, env_factory, policy, value, cfg,
                  custom_reward=None, running_state=None, tensor_type=torch.DoubleTensor):
         self.id = cfg["env_name"] + "-" + name
-        if distinguish:
-            self.id = self.id + "-" + str(distinguish)
         self.env_factory = env_factory
         self.policy = policy
         self.value = value

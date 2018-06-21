@@ -14,7 +14,7 @@ class ActorCriticTrainer(object):
         self.log = Logger(self.id, self.cfg)
         self.model_dir = self.log.task.model_dir
         self.iter_i = 0
-        if self.evaluator is not None:
+        if self.evaluator is not None and cfg["eval_model_interval"] > 0:
             self.evaluator.set_logger(self.log)
 
         self.gpu = cfg["gpu"] if "gpu" in cfg else False
