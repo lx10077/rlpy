@@ -84,8 +84,7 @@ class ActorCriticAgent(object):
         if use_gpu and self.gpu:
             states, actions, rewards, masks = states.cuda(), actions.cuda(), rewards.cuda(), masks.cuda()
         with torch.no_grad():
-            states_for_compute_values = Variable(states)
-        values = self.value(states_for_compute_values).data
+            values = self.value(states)
 
         # get advantage estimation from the trajectories
         advantages, value_targets = estimate_advantages(rewards, masks, values,

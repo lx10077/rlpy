@@ -9,7 +9,9 @@ class VariateTrpoUpdater(TrpoUpdater):
 
     def get_policy_loss(self):
         log_probs = self.policy_net.get_log_prob(self.states, self.actions)
-        term = self.variate(self.states, self.policy_net(self.states))
+
+        print(self.policy_net(self.states))
+        term = self.variate(self.states, f)
         action_loss = self.variate(self.states, self.actions) - self.advantages - term
         action_loss *= torch.exp(log_probs - self.fixed_log_probs)
         return action_loss.mean()
@@ -29,6 +31,8 @@ class VariateUpdater(object):
 
     def _get_min_var_grad(self):
         log_probs = self.policy.get_log_prob(self.states, self.actions)
+
+
         term = self.variate(self.states, self.policy(self.states))
         action_loss = (self.variate(self.states, self.actions) - self.advantages) * log_probs - term
         action_loss.backward()
@@ -44,7 +48,7 @@ class VariateUpdater(object):
                      ] ** 2
         """
         variate_loss = self._get_min_var_grad()
-        log["variate_loss/min_var"] = variate_loss.data[0]
+        log["variate_loss/min_var"] = variate_loss.item()
 
         self.optimizer_variate.zero_grad()
         variate_loss.backward()
@@ -62,7 +66,7 @@ class VariateUpdater(object):
         """
         rewards = batch["rewards"]
         variate_loss = (self.variate(self.states, self.actions) - rewards).mean()
-        log["variate_loss/fit_q"] = variate_loss.data[0]
+        log["variate_loss/fit_q"] = variate_loss.item()
 
         self.optimizer_variate.zero_grad()
         variate_loss.backward()
@@ -75,7 +79,9 @@ class VariateUpdater(object):
         self.actions = batch["actions"]
         self.advantages = batch["advantages"]
         with torch.no_grad():
+            self.mu, self.log_std = self.policy(self.states)
             self.fixed_log_probs = self.policy.get_log_prob(self.states, self.actions).detach()
+            self.xi = (self.actions - self.mu) / self.log_std.exp()
 
         log = self.suboptimizer(batch, log, *args, **kwargs)
         for _ in range(self.optim_variate_iternum):

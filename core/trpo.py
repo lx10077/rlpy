@@ -78,9 +78,9 @@ class TrpoUpdater(object):
         mu_t = (mu * t).sum()
         _Jt = compute_flat_grad(mu_t, self.policy_net.parameters(),
                                 filter_input_ids=filter_input_ids, create_graph=True)
-        _Jtv = (_Jt * Variable(v)).sum()
+        _Jtv = (_Jt * v).sum()
         _Jv = torch.autograd.grad(_Jtv, t, retain_graph=True)[0]
-        _MJv = Variable(_M * _Jv.data)
+        _MJv = _M * _Jv.data
         _mu_MJv = (_MJv * mu).sum()
         _JTMJv = compute_flat_grad(_mu_MJv, self.policy_net.parameters(),
                                    filter_input_ids=filter_input_ids, retain_graph=True).data

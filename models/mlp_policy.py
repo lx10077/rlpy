@@ -121,7 +121,7 @@ class DiscretePolicy(Network):
         if old_stat is not None:  # make sure old_stat is detached
             action_prob0 = old_stat.detach()
         else:
-            action_prob0 = Variable(action_prob1.data).detach()
+            action_prob0 = action_prob1.data.detach()
 
         kl = action_prob0 * (action_prob0.log() - action_prob1.log())
         return kl.sum(1, keepdim=True)

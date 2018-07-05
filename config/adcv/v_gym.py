@@ -2,12 +2,12 @@ import argparse
 import gym
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from utils import *
 from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
 from models.mlp_critic import ValueFunction, LinearVariate, QuadraticVariate, MlpVariate
-from .v_opt import VariateUpdater
+from config.adcv.v_opt import VariateUpdater
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticEvaluator
@@ -16,7 +16,7 @@ from core.evaluator import ActorCriticEvaluator
 parser = argparse.ArgumentParser(description='PyTorch ADCV example')
 parser.add_argument('--env-name', default="Hopper-v2", metavar='G',
                     help='name of the environment to run')
-parser.add_argument('--adcv', type=str, choices=['linear', 'mlp', 'quadratic'], metavar='V',
+parser.add_argument('--variate', type=str, choices=['linear', 'mlp', 'quadratic'], metavar='V',
                     help='damping (default: 1e-2)')
 parser.add_argument('--render', action='store_true', default=False,
                     help='render the environment')
@@ -68,14 +68,11 @@ def env_factory(thread_id):
 
 set_seed(args.seed)
 torch.set_default_tensor_type('torch.DoubleTensor')
-state_dim, action_dim, is_disc_action = get_gym_info(env_factory)
+state_dim, action_dim, _ = get_gym_info(env_factory)
 running_state = ZFilter((state_dim,), clip=5)
 
 # Define actor, critic and discriminator
-if is_disc_action:
-    policy_net = DiscretePolicy(state_dim, action_dim)
-else:
-    policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
 value_net = ValueFunction(state_dim)
 
 if args.variate == 'linear':
