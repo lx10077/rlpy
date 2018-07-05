@@ -1,4 +1,3 @@
-from torch.autograd import Variable
 from plotly.graph_objs import Scatter, Line
 import numpy as np
 import plotly
@@ -51,8 +50,8 @@ class ActorCriticEvaluator(object):
             if self.agent.running_state is not None:
                 state = self.agent.running_state(state, update=False)
 
-            state_var = Variable(self.agent.tensor(state).unsqueeze(0), volatile=True)
-            action = self.policy.select_action(state_var)
+            state = self.agent.tensor(state).unsqueeze(0)
+            action = self.policy.select_action(state)
             next_state, reward, done, _ = self.eval_env.step(action)
             total_rewards[epsd_idx] += reward
             epsd_iters += 1

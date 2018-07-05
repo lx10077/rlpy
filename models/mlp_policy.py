@@ -39,11 +39,11 @@ class DiagnormalPolicy(Network):
         action_mean, action_log_std = self.forward(x)
         action_std = torch.exp(action_log_std)
         action = torch.normal(action_mean, action_std)
-        return action.data  # numpy array
+        return action.detach()
 
     def mean_action(self, x):
         action_mean, _ = self.forward(x)
-        return action_mean.data  # numpy array
+        return action_mean.detach()
 
     def get_kl(self, x, old_stat=None):
         mean1, log_std1 = self.forward(x)
@@ -54,8 +54,8 @@ class DiagnormalPolicy(Network):
         else:
             # applied to automatic differentiation in TRPO
             # couldn't be used to calculate the specific KL
-            mean0 = Variable(mean1.data).detach()
-            log_std0 = Variable(log_std1.data).detach()
+            mean0 = mean1.data.detach()
+            log_std0 = log_std1.data.detach()
 
         std0, std1 = torch.exp(log_std0), torch.exp(log_std1)
         kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / (2.0 * std1.pow(2)) - 0.5
@@ -107,7 +107,7 @@ class DiscretePolicy(Network):
 
     def mean_action(self, x):
         action_prob = self.forward(x)
-        all_action = np_to_var(np.arange(self.action_num)).float().unsqueeze(0)
+        all_action = np_to_tensor(np.arange(self.action_num)).float().unsqueeze(0)
         action_mean = (all_action * action_prob).sum(1)
         action_mean = action_mean.data.numpy()
         upper = np.ceil(action_mean)

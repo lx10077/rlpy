@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use('Agg')  # Force matplotlib to not use any Xwindows backend.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import matplotlib.pyplot as plt
-from utils.tools import trainlogdir, assetdir
+from utils.tools import traindir, assetdir
 
 save_dir = os.path.join(assetdir, 'fig')
 os.makedirs(save_dir, exist_ok=True)
@@ -18,7 +18,7 @@ os.makedirs(save_dir, exist_ok=True)
 
 def get_reward_from_event(args):
     reward_dict = {}
-    base_path = os.path.join(os.path.join(trainlogdir, 'config'), args.env)
+    base_path = os.path.join(os.path.join(traindir, 'config'), args.env)
     for file in glob.glob(os.path.join(base_path, args.env + '-*')):
         algo = file.split('-')[-1].lower()
         event_file = os.path.join(file, 'train.events')
@@ -58,7 +58,8 @@ def get_reward_from_event(args):
     return reward_dict
 
 
-def plot_reward(reward_dict, title, length, fig_basename=None, save=True, viz=False):
+def plot_reward(reward_dict, title, length, dpi=300,
+                fig_basename=None, save=True, viz=False):
     try:
         plt.figure(figsize=(6, 6))
     except Exception as e:
@@ -94,7 +95,7 @@ def plot_reward(reward_dict, title, length, fig_basename=None, save=True, viz=Fa
     if save:
         if fig_basename is None:
             fig_basename = title + uuid.uuid4().hex + '.png'
-        plt.savefig(os.path.join(save_dir, fig_basename), dpi=300)
+        plt.savefig(os.path.join(save_dir, fig_basename), dpi=dpi)
 
     if viz:
         plt.show()

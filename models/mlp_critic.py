@@ -176,7 +176,7 @@ class DistDqn(nn.Module):
         self.conv = build_conv(state_dim[0])
 
         self.delta_z = (self.vmax - self.vmin) / (self.n_atoms - 1)
-        self.z_vals = np_to_var(np.linspace(self.vmin, self.vmax, self.n_atoms).astype(np.float32))
+        self.z_vals = np_to_tensor(np.linspace(self.vmin, self.vmax, self.n_atoms).astype(np.float32))
 
         conv_out_size = get_out_dim(self.conv, self.state_dim)
         fc_dims = [conv_out_size, 512, self.action_dim * self.n_atoms]

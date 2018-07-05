@@ -15,19 +15,33 @@ def asset_dir():
     return new_dir
 
 
-def trainlog_dir(prefix=None):
+def train_dir(prefix=None):
+    def make_soft_link(base_path, path):
+        if not os.path.exists(path):
+            os.system('ln -s {} {}'.format(base_path, path))
+        elif os.path.realpath(path) != os.path.realpath(base_path):
+            os.system('rm {}'.format(path))
+            os.system('ln -s {} {}'.format(base_path, path))
+
+    def make_dir(path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+            print("[Dir]       Create train_log in " + path)
+
+    plan_new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../train_log/'))
+
     if prefix is not None:
-        new_dir = os.path.abspath(os.path.join(os.path.dirname(str(prefix)), '../train_log/'))
+        new_dir = os.path.abspath(os.path.join(str(prefix), 'train_log'))
+        make_dir(new_dir)
+        make_soft_link(new_dir, plan_new_dir)
     else:
-        new_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../train_log/'))
-    if not os.path.exists(new_dir):
-        os.makedirs(new_dir)
-        print("[Dir]       Create train_log in " + new_dir)
+        new_dir = plan_new_dir
+        make_dir(new_dir)
     return new_dir
 
 
 assetdir = asset_dir()
-trainlogdir = trainlog_dir()
+traindir = train_dir()
 
 
 def set_dir(prefix, name, overwrite=False):

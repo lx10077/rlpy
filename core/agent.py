@@ -83,7 +83,9 @@ class ActorCriticAgent(object):
         masks = np_to_tensor(np.stack(batch.mask).astype(np.float64))
         if use_gpu and self.gpu:
             states, actions, rewards, masks = states.cuda(), actions.cuda(), rewards.cuda(), masks.cuda()
-        values = self.value(Variable(states, volatile=True)).data
+        with torch.no_grad():
+            states_for_compute_values = Variable(states)
+        values = self.value(states_for_compute_values).data
 
         # get advantage estimation from the trajectories
         advantages, value_targets = estimate_advantages(rewards, masks, values,
@@ -136,11 +138,13 @@ def collect_samples(pid, queue, env, policy, custom_reward, mean_action,
         t = 0
 
         for t in range(10000):
-            state_var = Variable(tensor(state).unsqueeze(0), volatile=True)
-            if mean_action:
-                action = policy(state_var)[0].data[0].numpy()
-            else:
-                action = policy.select_action(state_var)[0].numpy()
+            with torch.no_grad():
+                state_var = tensor(state).unsqueeze(0)
+
+                if mean_action:
+                    action = policy(state_var)[0].numpy()[0]
+                else:
+                    action = policy.select_action(state_var)[0].numpy()
 
             action = int(action) if policy.is_disc_action else action.astype(np.float64)
             next_state, reward, done, _ = env.step(action)

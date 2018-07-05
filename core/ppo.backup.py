@@ -18,8 +18,9 @@ class ClipPpoUpdater(object):
         self.optim_value_iternum = cfg["optim_value_iternum"]
 
     def update_value(self, states, values_targets, log):
+        values_targets = Variable(values_targets)
         for _ in range(self.optim_value_iternum):
-            values_pred = self.value(states)
+            values_pred = self.value(Variable(states))
             value_loss = (values_pred - values_targets).pow(2).mean()
             log["value_loss"] = value_loss.item()
 
@@ -35,10 +36,11 @@ class ClipPpoUpdater(object):
         return log
 
     def update_policy(self, states, actions, advantages, fixed_log_probs, log):
-        log_probs = self.policy.get_log_prob(states, actions)
-        ratio = torch.exp(log_probs - fixed_log_probs)
-        surr1 = ratio * advantages
-        surr2 = torch.clamp(ratio, 1.0 - self.curr_clip_epsilon, 1.0 + self.curr_clip_epsilon) * advantages
+        advantages_var = Variable(advantages)
+        log_probs = self.policy.get_log_prob(Variable(states), Variable(actions))
+        ratio = torch.exp(log_probs - Variable(fixed_log_probs))
+        surr1 = ratio * advantages_var
+        surr2 = torch.clamp(ratio, 1.0 - self.curr_clip_epsilon, 1.0 + self.curr_clip_epsilon) * advantages_var
         policy_surr = -torch.min(surr1, surr2).mean()
         # policy_surr = -torch.cat([surr1, surr2], 1).min(1)[0].mean()
         log["policy_surr"] = policy_surr.item()
@@ -55,7 +57,8 @@ class ClipPpoUpdater(object):
         advantages = batch["advantages"]
         value_targets = batch["value_targets"]
         with torch.no_grad():
-            fixed_log_probs = self.policy.get_log_prob(states, actions)
+            states_for_logprob = Variable(states)
+        fixed_log_probs = self.policy.get_log_prob(states_for_logprob, Variable(actions)).data
 
         num_sample = states.shape[0]
         optim_iter_num = int(np.ceil(num_sample / self.optim_batch_size))

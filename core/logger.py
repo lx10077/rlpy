@@ -1,11 +1,10 @@
-from utils.tools import trainlog_dir, set_dir
+from utils.tools import train_dir, set_dir
 from tensorboardX import SummaryWriter
 import os
 import logging
 
 
-trainlog_dir = trainlog_dir()
-config_dir = set_dir(trainlog_dir, 'config')
+train_dir = train_dir()
 
 
 # ====================================================================================== #
@@ -16,7 +15,7 @@ class Task(object):
         self.name = agent_id
         self.cfg = cfg
         self.env_name = cfg['env_name']
-        self.game_dir = set_dir(config_dir, self.env_name)
+        self.game_dir = set_dir(train_dir, self.env_name)
         self.task_save_dir = set_dir(self.game_dir, self.name)
         self.set_subfiles()
         self.make_summary = False

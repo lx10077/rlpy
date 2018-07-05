@@ -1,4 +1,5 @@
 import torch
+from torch.autograd import Variable
 
 
 class A2cUpdater(object):
@@ -17,27 +18,29 @@ class A2cUpdater(object):
         # Careful choice of lrs is necessary for good performance
 
         # update critic
-        values_pred = self.value(states)
-        value_loss = (values_pred - value_targets).pow(2).mean()
-        log["value_loss"] = value_loss.item()
+        values_targets = Variable(value_targets)
+        values_pred = self.value(Variable(states))
+        value_loss = (values_pred - values_targets).pow(2).mean()
+        log["value loss"] = value_loss.data[0]
 
         # weight decay
         if self.l2_reg > 0:
             for param in self.value.parameters():
                 value_loss += param.pow(2).sum() * self.l2_reg
-            log["value_loss_l2r"] = value_loss.item()
+            log["value loss w l2r"] = value_loss.data[0]
 
         self.optimizer_value.zero_grad()
         value_loss.backward()
         self.optimizer_value.step()
 
         # update policy
-        policy_loss = -(self.policy.get_log_prob(states, actions) * advantages).mean()
-        log["policy_loss"] = policy_loss.item()
+        log_probs = self.policy.get_log_prob(Variable(states), Variable(actions))
+        policy_loss = -(log_probs * Variable(advantages)).mean()
+        log["policy loss"] = policy_loss.data[0]
 
         self.optimizer_policy.zero_grad()
         policy_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 40)
+        torch.nn.utils.clip_grad_norm(self.policy.parameters(), 40)
         self.optimizer_policy.step()
 
         return log

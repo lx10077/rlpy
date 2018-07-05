@@ -1,58 +1,31 @@
 import torch
 import numpy as np
-from torch.autograd import Variable
 
 
 # ====================================================================================== #
 # Pytorch operation shortcuts
 # ====================================================================================== #
 use_gpu = torch.cuda.is_available()
-DoubleTensor = torch.DoubleTensor
-FloatTensor = torch.FloatTensor
-LongTensor = torch.LongTensor
-ByteTensor = torch.ByteTensor
 
 
-def cuda_var(tensor, gpu=False, *args, **kwargs):
-    if use_gpu and gpu:
-        return torch.autograd.Variable(tensor, *args, **kwargs).cuda()
-    else:
-        return torch.autograd.Variable(tensor, *args, **kwargs)
+def ones(shape, gpu=False, **kwargs):
+    return torch.ones(*shape, **kwargs).cuda() if use_gpu and gpu else torch.ones(*shape)
 
 
-def ones(shape, gpu=False):
-    return torch.ones(*shape).cuda() if use_gpu and gpu else torch.ones(*shape)
-
-
-def zeros(shape, gpu=False):
-    return torch.zeros(*shape).cuda() if use_gpu and gpu else torch.zeros(*shape)
+def zeros(shape, gpu=False, **kwargs):
+    return torch.zeros(*shape, **kwargs).cuda() if use_gpu and gpu else torch.zeros(*shape)
 
 
 def one_hot(x, n):
-    is_var = False
-    if isinstance(x, Variable):
-        x = x.data
-        is_var = True
     assert x.dim() == 2, "Incompatible dim {:d} for input. Dim must be 2.".format(x.dim())
     one_hot_x = torch.zeros(x.size(0), n)
     one_hot_x.scatter_(1, x, 1)
-    return one_hot_x if not is_var else cuda_var(one_hot_x)
+    return one_hot_x
 
 
 def np_to_tensor(nparray):
     assert isinstance(nparray, np.ndarray)
     return torch.from_numpy(nparray)
-
-
-def np_to_var(nparray, gpu=False, *args, **kwargs):
-    assert isinstance(nparray, np.ndarray)
-    return_var = Variable(torch.from_numpy(nparray), *args, **kwargs)
-    return return_var.cuda() if gpu else return_var
-
-
-def np_to_cuda_var(nparray, *args, **kwargs):
-    assert isinstance(nparray, np.ndarray)
-    return Variable(torch.from_numpy(nparray), *args, **kwargs).cuda()
 
 
 def adjust_learning_rate(optimizer, lr):
@@ -114,7 +87,7 @@ def get_state_dict(file):
 def get_out_dim(module, indim):
     if isinstance(module, list):
         module = torch.nn.Sequential(*module)
-    fake_input = Variable(torch.zeros(indim).unsqueeze(0))
+    fake_input = torch.zeros(indim).unsqueeze(0)
     output_size = module(fake_input).view(-1).size()[0]
     return output_size
 
@@ -151,7 +124,7 @@ def get_flat_grad_from(inputs, grad_grad=False):
             grads.append(param.grad.grad.view(-1))
         else:
             if param.grad is None:
-                grads.append(Variable(zeros(param.data.view(-1).shape)))
+                grads.append(zeros(param.data.view(-1).shape))
             else:
                 grads.append(param.grad.view(-1))
 
@@ -178,7 +151,7 @@ def compute_flat_grad(output, inputs, filter_input_ids=set(), retain_graph=False
     out_grads = []
     for i, param in enumerate(inputs):
         if i in filter_input_ids:
-            out_grads.append(Variable(zeros(param.data.view(-1).shape)))
+            out_grads.append(zeros(param.data.view(-1).shape))
         else:
             out_grads.append(grads[j].view(-1))
             j += 1

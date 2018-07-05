@@ -36,14 +36,14 @@ class GailUpdater(object):
     def __call__(self, batch, log, *args, **kwargs):
         log = self.suboptimizer(batch, log, *args, **kwargs)
 
-        states = Variable(batch["states"])
-        actions = Variable(batch["actions"])
-        expert_traj = Variable(iter(self.expert_dl).next())
+        states = batch["states"]
+        actions = batch["actions"]
+        expert_traj = iter(self.expert_dl).next()
         if use_gpu and self.gpu:
             expert_traj = expert_traj.cuda()
 
-        valid = Variable(ones((states.shape[0], 1), self.gpu and use_gpu))
-        fake = Variable(zeros((expert_traj.shape[0], 1), self.gpu and use_gpu))
+        valid = ones((states.shape[0], 1), self.gpu and use_gpu)
+        fake = zeros((expert_traj.shape[0], 1), self.gpu and use_gpu)
 
         for _ in range(self.optim_discrim_iternum):
 
@@ -52,7 +52,7 @@ class GailUpdater(object):
             expert_o = self.discrim(expert_traj)
 
             discrim_loss = self.discrim_criterion(expert_o, fake) + self.discrim_criterion(gen_o, valid)
-            log["discrim_loss"] = discrim_loss.data[0]
+            log["discrim_loss"] = discrim_loss.item()
 
             self.optimizer_discrim.zero_grad()
             discrim_loss.backward()

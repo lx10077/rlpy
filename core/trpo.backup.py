@@ -20,22 +20,22 @@ class TrpoUpdater(object):
         for param in self.value_net.parameters():
             if param.grad is not None:
                 param.grad.data.fill_(0)
-        values_pred = self.value_net(self.states)
+        values_pred = self.value_net(Variable(self.states))
         value_loss = (values_pred - self.values_targets).pow(2).mean()
 
         # weight decay
         for param in self.value_net.parameters():
             value_loss += param.pow(2).sum() * self.l2_reg
         value_loss.backward()
-        return value_loss.item(), get_flat_grad_from(self.value_net.parameters()).detach().cpu().numpy()
+        return value_loss.data.cpu().numpy(), get_flat_grad_from(self.value_net.parameters()).data.cpu().numpy()
 
-    def get_policy_loss(self):
-        log_probs = self.policy_net.get_log_prob(self.states, self.actions)
-        action_loss = - self.advantages * torch.exp(log_probs - self.fixed_log_probs)
+    def get_policy_loss(self, volatile=False):
+        log_probs = self.policy_net.get_log_prob(Variable(self.states, volatile=volatile), Variable(self.actions))
+        action_loss = -Variable(self.advantages) * torch.exp(log_probs - Variable(self.fixed_log_probs))
         return action_loss.mean()
 
     def conjugate_gradients(self, b, rdotr_tol=1e-10):
-        x = zeros(b.size(), gpu=use_gpu and self.gpu)
+        x = zeros(b.size(), use_gpu and self.gpu)
         r = b.clone()
         p = b.clone()
         rdotr = torch.dot(r, r)
@@ -53,28 +53,27 @@ class TrpoUpdater(object):
         return x
 
     def line_search(self, x, fullstep, expected_improve_full, max_backtracks=10, accept_ratio=0.1):
-        with torch.no_grad():
-            fval = self.get_policy_loss().item()
+        fval = self.get_policy_loss(True).data[0]
 
-            for stepfrac in [.5 ** x for x in range(max_backtracks)]:
-                x_new = x + stepfrac * fullstep
-                set_flat_params_to(self.policy_net, x_new)
-                fval_new = self.get_policy_loss().item()
-                actual_improve = fval - fval_new
-                expected_improve = expected_improve_full * stepfrac
-                ratio = actual_improve / expected_improve
+        for stepfrac in [.5 ** x for x in range(max_backtracks)]:
+            x_new = x + stepfrac * fullstep
+            set_flat_params_to(self.policy_net, x_new)
+            fval_new = self.get_policy_loss(True).data[0]
+            actual_improve = fval - fval_new
+            expected_improve = expected_improve_full * stepfrac
+            ratio = actual_improve / expected_improve
 
-                if ratio > accept_ratio:
-                    return True, x_new
-            return False, x
+            if ratio > accept_ratio:
+                return True, x_new
+        return False, x
 
     # use fisher information matrix for Hessian * vector
     def fvp_fim(self, v):
-        _M, mu, info = self.policy_net.get_fim(self.states)
+        _M, mu, info = self.policy_net.get_fim(Variable(self.states))
         mu = mu.view(-1)
         filter_input_ids = set() if self.policy_net.is_disc_action else set(info['std_id'])
 
-        t = ones(mu.size(), requires_grad=True)
+        t = Variable(torch.ones(mu.size()), requires_grad=True)
         mu_t = (mu * t).sum()
         _Jt = compute_flat_grad(mu_t, self.policy_net.parameters(),
                                 filter_input_ids=filter_input_ids, create_graph=True)
@@ -92,12 +91,13 @@ class TrpoUpdater(object):
 
     # directly compute Hessian*vector from KL
     def fvp_direct(self, v):
-        kl = self.policy_net.get_kl(self.states).mean()
+        kl = self.policy_net.get_kl(Variable(self.states))
+        kl = kl.mean()
 
         grads = torch.autograd.grad(kl, self.policy_net.parameters(), create_graph=True)
         flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
 
-        kl_v = (flat_grad_kl * v).sum()
+        kl_v = (flat_grad_kl * Variable(v)).sum()
         grads = torch.autograd.grad(kl_v, self.policy_net.parameters())
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads]).data
 
@@ -107,21 +107,20 @@ class TrpoUpdater(object):
         self.states = batch["states"]
         self.actions = batch["actions"]
         self.advantages = batch["advantages"]
-        with torch.no_grad():
-            self.fixed_log_probs = self.policy_net.get_log_prob(self.states, self.actions)
+        self.fixed_log_probs = self.policy_net.get_log_prob(self.states, Variable(self.actions)).data
 
         # update the value networks by L-BFGS
-        self.values_targets = batch["value_targets"]
+        self.values_targets = Variable(batch["value_targets"])
         flat_params, _, opt_info = scipy.optimize.fmin_l_bfgs_b(self.get_value_loss,
                                                                 get_flat_params_from(self.value_net).cpu().numpy(),
                                                                 maxiter=25)
         set_flat_params_to(self.value_net, np_to_tensor(flat_params))
-        value_loss = (self.value_net(self.states) - self.values_targets).pow(2).mean()
-        log["value loss"] = value_loss.item()
+        value_loss = (self.value_net(Variable(self.states)) - self.values_targets).pow(2).mean()
+        log["value loss"] = value_loss.data[0]
 
         # update the policy networks by trust region gradient
         policy_loss = self.get_policy_loss()
-        log["policy loss"] = policy_loss.item()
+        log["policy loss"] = policy_loss.data[0]
         grads = torch.autograd.grad(policy_loss, self.policy_net.parameters())
         loss_grad = torch.cat([grad.view(-1) for grad in grads]).data
         stepdir = self.conjugate_gradients(-loss_grad)

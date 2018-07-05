@@ -76,7 +76,7 @@ class TrajGiver(object):
             return expert_path
         else:
             possible_expert = {}
-            for file_dir in glob.glob(os.path.join(trainlogdir, 'config/' + self.cfg['env_name'] + '/*')):
+            for file_dir in glob.glob(os.path.join(traindir, 'config/' + self.cfg['env_name'] + '/*')):
                 full_name = os.path.basename(file_dir)
                 config_name = '-'.join(full_name.split('-')[:2])
                 if config_name == self.cfg['env_name']:
@@ -118,9 +118,9 @@ class TrajGiver(object):
             episode_traj = []
 
             for episode_step in range(10000):
-                state_var = Variable(np_to_tensor(state).unsqueeze(0), volatile=True)
+                state_var = np_to_tensor(state).unsqueeze(0)
                 # choose mean action
-                action = policy_net(state_var)[0].data[0].cpu().numpy()
+                action = policy_net(state_var)[0].cpu().numpy()[0]
                 # choose stochastic action
                 # action = policy_net.select_action(state_var)[0].cpu().numpy()
                 action = int(action) if policy_net.is_disc_action else action.astype(np.float64)
