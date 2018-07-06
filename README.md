@@ -39,9 +39,15 @@ We test the code in three Mujoco environments with default parameters.
 </p>
 <p align="middle">
     <img src="asset/fig/Reacher-v24eb7d377cfe94a59aae0b43e6c6f3f4b.png" width="290" />
-    <img src="asset/fig/Ant-v27422f002bf274d708d9efd2b48b16e93.png" width="290" />
+    <img src="asset/fig/Ant-v2f53777c11d934c4289ec8f3889e05f21.png" width="290" />
+    <img src="asset/fig/Swimmer-v2dddde2f25efc400d856fe85b13c59f8d.png" width="290" />
+</p>
+
+<p align="middle">
+    <img src="asset/fig/InvertedDoublePendulum-v22f05909cfa614991be90614303122257.png" width="290" />
     <img src="asset/fig/InvertedPendulum-v23e9cfefbb0db41c3a249b420a8c5ccac.png" width="290" />
 </p>
+
 
 ## Generative Adversarial Imitation Learning
 * [GAIL](https://arxiv.org/abs/1606.03476) -> [gail/gail_gym.py](https://github.com/lx10077/rlpy/blob/master/config/gail/gail_gym.py)

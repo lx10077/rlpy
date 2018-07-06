@@ -1,47 +1,89 @@
 from core.trpo import TrpoUpdater
 from utils.torchs import *
+import scipy
+import math
 
 
 class VariateTrpoUpdater(TrpoUpdater):
     def __init__(self, nets, cfg, use_fim=False):
-        self.variate = nets['adcv']
+        self.variate = nets['variate']
         super(VariateTrpoUpdater, self).__init__(nets['policy'], nets['value'], cfg, use_fim=use_fim)
 
     def get_policy_loss(self):
         log_probs = self.policy_net.get_log_prob(self.states, self.actions)
-
-        print(self.policy_net(self.states))
-        term = self.variate(self.states, f)
-        action_loss = self.variate(self.states, self.actions) - self.advantages - term
+        action_mean, action_log_std = self.policy_net(self.states)
+        f = action_mean + action_log_std.exp() * self.xi
+        action_loss = self.variate(self.states, self.actions) - self.advantages - self.variate(self.states, f)
         action_loss *= torch.exp(log_probs - self.fixed_log_probs)
         return action_loss.mean()
+
+    def __call__(self, batch, log, *args, **kwargs):
+        self.states = batch["states"]
+        self.actions = batch["actions"]
+        self.advantages = batch["advantages"]
+        with torch.no_grad():
+            self.fixed_log_probs = self.policy_net.get_log_prob(self.states, self.actions).data
+            self.mu, self.log_std = self.policy_net(self.states)
+            self.xi = (self.actions - self.mu) / self.log_std.exp()
+
+        # update the value networks by L-BFGS
+        self.values_targets = batch["value_targets"]
+        flat_params, _, opt_info = scipy.optimize.fmin_l_bfgs_b(self.get_value_loss,
+                                                                get_flat_params_from(self.value_net).cpu().numpy(),
+                                                                maxiter=25)
+        set_flat_params_to(self.value_net, np_to_tensor(flat_params))
+        value_loss = (self.value_net(self.states) - self.values_targets).pow(2).mean()
+        log["value loss"] = value_loss.item()
+
+        # update the policy networks by trust region gradient
+        policy_loss = self.get_policy_loss()
+        log["policy loss"] = policy_loss.item()
+        grads = torch.autograd.grad(policy_loss, self.policy_net.parameters())
+        loss_grad = torch.cat([grad.view(-1) for grad in grads]).data
+        stepdir = self.conjugate_gradients(-loss_grad)
+
+        shs = 0.5 * (stepdir.dot(self.Fvp(stepdir)))
+        lm = math.sqrt(self.max_kl / shs)
+        fullstep = stepdir * lm
+        expected_improve = -loss_grad.dot(fullstep)
+        prev_params = get_flat_params_from(self.policy_net)
+        success, new_params = self.line_search(prev_params, fullstep, expected_improve)
+        set_flat_params_to(self.policy_net, new_params)
+
+        return log
 
 
 class VariateUpdater(object):
     def __init__(self, nets, optimizers, cfg):
         self.policy = nets['policy']
         self.value = nets['value']
-        self.variate = nets['adcv']
+        self.variate = nets['variate']
         self.optimizer_policy = optimizers['optimizer_policy']
         self.optimizer_value = optimizers['optimizer_value']
         self.optimizer_variate = optimizers['optimizer_variate']
         self.optim_variate_iternum = cfg['optim_variate_iternum'] if 'optim_variate_iternum' in cfg else 1
         self.gpu = cfg['gpu'] if 'gpu' in cfg else False
         self.suboptimizer = VariateTrpoUpdater(nets, cfg)
+        self.call = 0
 
     def _get_min_var_grad(self):
         log_probs = self.policy.get_log_prob(self.states, self.actions)
+        action_mean, action_log_std = self.policy(self.states)
+        f = action_mean + action_log_std.exp() * self.xi
+        action_loss = self.variate(self.states, self.actions) - self.advantages - self.variate(self.states, f)
+        action_loss = (action_loss * torch.exp(log_probs - self.fixed_log_probs)).mean()
 
-
-        term = self.variate(self.states, self.policy(self.states))
-        action_loss = (self.variate(self.states, self.actions) - self.advantages) * log_probs - term
-        action_loss.backward()
-        grad = get_flat_grad_from(action_loss, self.policy)
-        return grad.pow(2).mean()
+        flat_grad = []
+        grads = torch.autograd.grad(action_loss, self.policy.parameters(), retain_graph=True)
+        for grad in grads:
+            grad.requires_grad = True
+            flat_grad.append(grad.view(-1))
+        flat_grad = torch.cat(flat_grad)
+        return flat_grad.pow(2).mean()
 
     def _min_var(self, batch, log):
         """
-        Updating adcv and value networks by minimizing least square of q, i.e.
+        Updating variate and value networks by minimizing least square of q, i.e.
 
         min_w sum_t [ delta_policy log(policy(a_t | s_t)) * (Q(s_t, a_t) - phi_w(s_t, a_t)) +
                       delta_policy policy(s_t, xi_t) delta_a phi_w(s_t, a_t)
@@ -52,13 +94,13 @@ class VariateUpdater(object):
 
         self.optimizer_variate.zero_grad()
         variate_loss.backward()
-        torch.nn.utils.clip_grad_norm(self.variate.parameters(), 40)
+        torch.nn.utils.clip_grad_norm_(self.variate.parameters(), 40)
         self.optimizer_variate.step()
         return log
 
     def _fit_q(self, batch, log):
         """
-        Updating adcv and value networks by minimizing least square of q, i.e.
+        Updating variate and value networks by minimizing L2 loss, i.e.
 
             min_w sum_t (Phi_w(s_t, a_t) - R_t) ** 2
 
@@ -70,11 +112,12 @@ class VariateUpdater(object):
 
         self.optimizer_variate.zero_grad()
         variate_loss.backward()
-        torch.nn.utils.clip_grad_norm(self.variate.parameters(), 40)
+        torch.nn.utils.clip_grad_norm_(self.variate.parameters(), 40)
         self.optimizer_variate.step()
         return log
 
     def __call__(self, batch, log, *args, **kwargs):
+        self.call += 1
         self.states = batch["states"]
         self.actions = batch["actions"]
         self.advantages = batch["advantages"]
@@ -90,8 +133,12 @@ class VariateUpdater(object):
 
     def state_dict(self):
         return {'optimizer_policy': self.optimizer_policy.state_dict(),
-                'optimizer_value': self.optimizer_variate.state_dict()}
+                'optimizer_value': self.optimizer_value.state_dict(),
+                'optimizer_variate': self.optimizer_variate.state_dict(),
+                'call': self.call}
 
     def load_state_dict(self, state_dict):
         self.optimizer_policy.load_state_dict(state_dict['optimizer_policy'])
         self.optimizer_value.load_state_dict(state_dict['optimizer_value'])
+        self.optimizer_variate.load_state_dict(state_dict['optimizer_variate'])
+        self.call = state_dict['call'] + 1

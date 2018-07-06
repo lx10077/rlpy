@@ -12,25 +12,22 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.state_dim = state_dim
         self.activate = choose_activate(conf["activate"]) if "activate" in conf else nn.ReLU()
-        self.returnlayerlst = conf["layerlst"] if "layerlst" in conf else False
 
         if isinstance(state_dim, int):
             hidden_size = conf["hidden"] if "hidden" in conf else [128, 128]
-            layers = build_fc([state_dim] + hidden_size, returnlst=True,
-                              activate=self.activate, actlast=True)
+            layers = build_fc([state_dim] + hidden_size, activate=self.activate, actlast=True)
             self.last_dim = hidden_size[-1]
         elif isinstance(state_dim, tuple):
-            layers = build_conv(state_dim[0], returnlst=True)
+            layers = build_conv(state_dim[0])
             layers.append(Flatten())
             conv_out_size = get_out_dim(layers, self.state_dim)
             out_size = conf["out_size"] if "out_size" in conf else 512
-            layers += build_fc([conv_out_size, out_size], returnlst=True,
-                               activate=self.activate, actlast=True)
+            layers += build_fc([conv_out_size, out_size], activate=self.activate, actlast=True)
             self.last_dim = out_size
         else:
             raise TypeError
 
-        self.layers = layers if self.returnlayerlst else nn.Sequential(*layers)
+        self.layers = nn.Sequential(*layers)
 
 
 # ====================================================================================== #
@@ -50,10 +47,10 @@ def choose_activate(activate_name):
     elif activate_name == "elu":
         return nn.ELU()
     else:
-        raise KeyError
+        raise KeyError('No such activation.'.format(activate_name))
 
 
-def build_conv(in_channels, returnlst=False):
+def build_conv(in_channels):
     layers = [
         nn.Conv2d(int(in_channels), 32, kernel_size=8, stride=4),
         nn.ReLU(),
@@ -63,10 +60,10 @@ def build_conv(in_channels, returnlst=False):
         nn.ReLU()
     ]
 
-    return layers if returnlst else nn.Sequential(*layers)
+    return layers
 
 
-def build_fc(dims, returnlst=False, activate=nn.ReLU(), actlast=False):
+def build_fc(dims, activate=nn.ReLU(), actlast=False):
     assert len(dims) >= 2
     layers = [nn.Linear(dims[0], dims[1])]
     for i in range(1, len(dims) - 1):
@@ -76,10 +73,10 @@ def build_fc(dims, returnlst=False, activate=nn.ReLU(), actlast=False):
     if actlast:
         layers.append(activate)
 
-    return layers if returnlst else nn.Sequential(*layers)
+    return layers
 
 
-def build_noisy_fc(dims, sigma0, returnlst=False, activate=nn.ReLU()):
+def build_noisy_fc(dims, sigma0, activate=nn.ReLU()):
     assert len(dims) >= 2
     layers = [NoisyLinear(dims[0], dims[1], sigma0)]
     for i in range(1, len(dims) - 1):
@@ -87,7 +84,7 @@ def build_noisy_fc(dims, sigma0, returnlst=False, activate=nn.ReLU()):
             layers.append(activate)
             layers.append(NoisyLinear(dims[i], dims[i+1], sigma0))
 
-    return layers if returnlst else nn.Sequential(*layers)
+    return layers
 
 
 # ====================================================================================== #
@@ -188,8 +185,8 @@ class NoisyLinear(nn.Module):
             # update the noise once per update
             self.sample_noise()
 
-        noisy_weight = self.noisy_weight * Variable(self.noise)
-        noisy_bias = self.noisy_bias * Variable(self.out_noise)
+        noisy_weight = self.noisy_weight * self.noise
+        noisy_bias = self.noisy_bias * self.out_noise
         noisy_y = F.linear(x, noisy_weight, noisy_bias)
         return noisy_y + normal_y
 

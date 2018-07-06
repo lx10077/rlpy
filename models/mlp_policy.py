@@ -5,6 +5,7 @@ from utils.distribution import *
 class DiagnormalPolicy(Network):
     def __init__(self, state_dim, action_dim, **kwargs):
         self.conf = {"activate": "tanh",
+                     "logstd_on_state": False,
                      "log_std": 0}
         self.conf.update(kwargs)
         super(DiagnormalPolicy, self).__init__(state_dim, self.conf)
@@ -15,7 +16,7 @@ class DiagnormalPolicy(Network):
         self.action_mean.weight.data.mul_(0.1)
         self.action_mean.bias.data.mul_(0.0)
 
-        if "logstd_on_state" in self.conf and self.conf["logstd_on_state"]:
+        if self.conf["logstd_on_state"]:
             self.logstd_on_state = True
             self.action_log_std = nn.Linear(self.last_dim, action_dim)
             self.action_log_std.weight.data.mul_(0.1)

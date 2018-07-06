@@ -28,6 +28,8 @@ parser.add_argument('--tau', type=float, default=0.95, metavar='G',
                     help='gae (default: 0.95)')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='use gpu(default: False)')
+parser.add_argument('--learning-rate', type=float, default=3e-4, metavar='G',
+                    help='lr for variate (default: 3e-4)')
 parser.add_argument('--l2-reg', type=float, default=1e-3, metavar='G',
                     help='l2 regularization regression (default: 1e-3)')
 parser.add_argument('--max-kl', type=float, default=1e-2, metavar='G',
@@ -40,8 +42,6 @@ parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
                     help='number of updates in each timestep (default: 5)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
                     help='number of value updates in each optim epoch (default: 1)')
-parser.add_argument('--learning-rate', type=float, default=3e-4, metavar='G',
-                    help='gae (default: 3e-4)')
 parser.add_argument('--num-threads', type=int, default=4, metavar='N',
                     help='number of threads for agent (default: 4)')
 parser.add_argument('--seed', type=int, default=1, metavar='N',
@@ -72,8 +72,10 @@ state_dim, action_dim, _ = get_gym_info(env_factory)
 running_state = ZFilter((state_dim,), clip=5)
 
 # Define actor, critic and discriminator
-policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
+hidden = [10 * state_dim, math.ceil(math.sqrt(50 * state_dim)), 5]
+policy_net = DiagnormalPolicy(state_dim, action_dim, hidden=hidden, log_std=args.log_std)
 value_net = ValueFunction(state_dim)
+del hidden
 
 if args.variate == 'linear':
     variate_net = LinearVariate(state_dim, action_dim)
@@ -84,15 +86,15 @@ else:
 
 nets = {'policy': policy_net,
         'value': value_net,
-        'adcv': variate_net}
+        'variate': variate_net}
 
 if use_gpu and args.gpu:
     for name, net in nets.items():
         nets[name] = net.cuda()
 
 # Define the optimizers of actor, critic and discriminator
-optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)
-optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
+optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=9e-4/math.sqrt(5 * state_dim))
+optimizer_value = torch.optim.Adam(value_net.parameters(), lr=1e-4/math.sqrt(5 * state_dim))
 optimizer_variate = torch.optim.Adam(variate_net.parameters(), lr=args.learning_rate)
 optimizers = {'optimizer_policy': optimizer_policy,
               'optimizer_value': optimizer_value,

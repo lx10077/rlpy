@@ -69,8 +69,7 @@ class MlpVariate(Network):
     def __init__(self, state_dim, action_dim, **kwargs):
         assert isinstance(state_dim, int)
         self.conf = {"activate": "relu",
-                     "hidden": [100, None, 100+action_dim, 100],
-                     "layerlst": True,
+                     "hidden": [100, None, 100 + action_dim, 100],
                      "log_std": 0}
         self.conf.update(kwargs)
         super(MlpVariate, self).__init__(state_dim, self.conf)

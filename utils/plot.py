@@ -90,7 +90,10 @@ def plot_reward(reward_dict, title, length, dpi=300,
     ca = ColorAssigner()
 
     for algo, rewards in reward_dict.items():
-        rwds = list(list(rewards.values())[0].values())
+        rwds = {}
+        for event_reward in rewards.values():
+            rwds.update(event_reward)
+        rwds = [rwds[step] for step in sorted(rwds)]
         mu = []
         upper = []
         lower = []
@@ -125,10 +128,10 @@ def plot_reward(reward_dict, title, length, dpi=300,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', '--env-name', type=str, default='Hopper-v2')
+    parser.add_argument('--env', '--env-name', type=str, default='Ant-v2')
     parser.add_argument('--save_data', action='store_true', default=False)
     parser.add_argument('--show_info', action='store_false', default=True)
-    parser.add_argument('--x_len', type=int, default=670)
+    parser.add_argument('--x_len', type=int, default=3000)
     FLAGS = parser.parse_args()
 
     r_dict = get_reward_from_event(FLAGS)
