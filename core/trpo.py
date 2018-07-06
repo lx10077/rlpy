@@ -108,7 +108,7 @@ class TrpoUpdater(object):
         self.actions = batch["actions"]
         self.advantages = batch["advantages"]
         with torch.no_grad():
-            self.fixed_log_probs = self.policy_net.get_log_prob(self.states, self.actions)
+            self.fixed_log_probs = self.policy_net.get_log_prob(self.states, self.actions).data
 
         # update the value networks by L-BFGS
         self.values_targets = batch["value_targets"]

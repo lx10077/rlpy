@@ -57,6 +57,7 @@ class GailUpdater(object):
             self.optimizer_discrim.zero_grad()
             discrim_loss.backward()
             self.optimizer_discrim.step()
+
         return log
 
     def state_dict(self):

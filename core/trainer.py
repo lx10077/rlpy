@@ -28,7 +28,7 @@ class ActorCriticTrainer(object):
         self.eval_model_interval = cfg["eval_model_interval"]
         self.begin_i = 0
 
-    def start(self, save_every=False):
+    def start(self, save_every=True):
         if self.find_checkpoint('latest'):
             self.load_checkpoint('latest')
         self.begin_i = self.iter_i

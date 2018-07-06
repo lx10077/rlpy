@@ -11,14 +11,34 @@ matplotlib.use('Agg')  # Force matplotlib to not use any Xwindows backend.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import matplotlib.pyplot as plt
 from utils.tools import traindir, assetdir
+from collections import OrderedDict
 
 save_dir = os.path.join(assetdir, 'fig')
 os.makedirs(save_dir, exist_ok=True)
 
 
+class ColorAssigner(object):
+    def __init__(self):
+        self.available_colors = ['mauve', 'sky blue', 'grey', 'cyan', 'pink', 'teal', 'yellow',
+                                 'orange', 'magenta', 'purple', 'green', 'red', 'blue']
+        self.num_colors = len(self.available_colors)
+        self.items = {}
+
+    def __call__(self, algo):
+        if algo in self.items:
+            return self.items[algo]
+        else:
+            if len(self.available_colors) == 0:
+                raise ValueError('Only support {} colors'.format(self.num_colors))
+
+            choice = self.available_colors.pop()
+            self.items[algo] = choice
+            return 'xkcd:' + choice
+
+
 def get_reward_from_event(args):
-    reward_dict = {}
-    base_path = os.path.join(os.path.join(traindir, 'config'), args.env)
+    reward_dict = dict()
+    base_path = os.path.join(traindir, args.env)
     for file in glob.glob(os.path.join(base_path, args.env + '-*')):
         algo = file.split('-')[-1].lower()
         event_file = os.path.join(file, 'train.events')
@@ -37,7 +57,7 @@ def get_reward_from_event(args):
             if len(event_rewards) == 0:
                 continue
             rewards.update({event: event_rewards})
-        reward_dict.update({algo: rewards})
+        reward_dict[algo] = rewards
 
     if args.save_data:
         out = os.path.join(base_path, args.env + '.data.json')
@@ -65,7 +85,9 @@ def plot_reward(reward_dict, title, length, dpi=300,
     except Exception as e:
         print(Exception(e))
 
+    reward_dict = OrderedDict(sorted(reward_dict.items()))
     MEAN_LENGTH = length // 10
+    ca = ColorAssigner()
 
     for algo, rewards in reward_dict.items():
         rwds = list(list(rewards.values())[0].values())
@@ -81,11 +103,11 @@ def plot_reward(reward_dict, title, length, dpi=300,
                 mean = np.mean(rwds[i - MEAN_LENGTH: i])
                 std = np.std(rwds[i - MEAN_LENGTH: i])
             mu.append(mean)
-            upper.append(mean + 0.5 * std)
-            lower.append(mean - 0.5 * std)
+            upper.append(mean + 1. * std)
+            lower.append(mean - 1. * std)
         mu, lower, upper = mu[:length], lower[:length], upper[:length]
-        plt.plot(np.arange(len(mu)), np.array(mu), linewidth=1.0, label=algo)
-        plt.fill_between(np.arange(len(mu)), upper, lower, alpha=0.3)
+        plt.plot(np.arange(len(mu)), np.array(mu), linewidth=1.0, label=algo, color=ca(algo))
+        plt.fill_between(np.arange(len(mu)), upper, lower, alpha=0.3, color=ca(algo))
 
     plt.grid(True)
     plt.title(title)

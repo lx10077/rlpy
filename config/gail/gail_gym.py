@@ -22,9 +22,9 @@ parser.add_argument('--render', action='store_true', default=False,
                     help='render the environment')
 parser.add_argument('--log-std', type=float, default=0, metavar='G',
                     help='log std for the policy (default: 0)')
-parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
+parser.add_argument('--gamma', type=float, default=0.995, metavar='G',
                     help='discount factor (default: 0.99)')
-parser.add_argument('--tau', type=float, default=0.95, metavar='G',
+parser.add_argument('--tau', type=float, default=0.97, metavar='G',
                     help='gae (default: 0.95)')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='use gpu(default: False)')
@@ -99,7 +99,8 @@ if use_gpu and args.gpu:
 # Define the optimizers of actor, critic and discriminator
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
-optimizer_discrim = torch.optim.Adam(discrim_net.parameters(), lr=args.learning_rate)
+# optimizer_discrim = torch.optim.Adam(discrim_net.parameters(), lr=args.learning_rate)
+optimizer_discrim = torch.optim.RMSprop(discrim_net.parameters(), lr=args.learning_rate)
 optimizers = {'optimizer_policy': optimizer_policy,
               'optimizer_value': optimizer_value,
               'optimizer_discrim': optimizer_discrim}

@@ -16,13 +16,13 @@ python utils/plot.py --env-name <ENVIRONMENT_NAME> --x_len 1000 --save_data
 ```
 
 ## Policy Gradient Methods
-* [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf) -> [examples/trpo_gym.py](https://github.com/lx10077/rlpy/blob/master/examples/trpo_gym.py)
-* [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf) -> [examples/ppo_gym.py](https://github.com/lx10077/rlpy/blob/master/examples/ppo_gym.py)
-* [Synchronous A3C (A2C)](https://arxiv.org/pdf/1602.01783.pdf) -> [examples/a2c_gym.py](https://github.com/lx10077/rlpy/blob/master/examples/a2c_gym.py)
+* [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf) -> [config/pg/trpo_gym.py](https://github.com/lx10077/rlpy/blob/master/config/pg/trpo_gym.py)
+* [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf) -> [config/pg/ppo_gym.py](https://github.com/lx10077/rlpy/blob/master/config/pg/ppo_gym.py)
+* [Synchronous A3C (A2C)](https://arxiv.org/pdf/1602.01783.pdf) -> [config/pg/a2c_gym.py](https://github.com/lx10077/rlpy/blob/master/config/pg/a2c_gym.py)
 
 ### Example
 ```
-python examples/ppo_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-interval 50 --eval-model-interval 10
+python config/pg/ppo_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-interval 50 --eval-model-interval 10
 ```
 
 ### Reference
@@ -30,24 +30,29 @@ python examples/ppo_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model
 * [ikostrikov/pytorch-trpo](https://github.com/ikostrikov/pytorch-trpo)
 * [openai/baselines](https://github.com/openai/baselines)
 
+### Results
+We test the code in three Mujoco environments with default parameters.
+<p align="middle">
+    <img src="asset/fig/HalfCheetah-v2c335b6ab055c45619f477f8148cf81f4.png" width="290" />
+    <img src="asset/fig/Hopper-v22620b86d514f4977880fcfe51d920d35.png" width="290" />
+    <img src="asset/fig/Walker2d-v20397b9f6597746eda77199735e16fda9.png" width="290" />
+</p>
+<p align="middle">
+    <img src="asset/fig/Reacher-v24eb7d377cfe94a59aae0b43e6c6f3f4b.png" width="290" />
+    <img src="asset/fig/Ant-v27422f002bf274d708d9efd2b48b16e93.png" width="290" />
+    <img src="asset/fig/InvertedPendulum-v23e9cfefbb0db41c3a249b420a8c5ccac.png" width="290" />
+</p>
+
 ## Generative Adversarial Imitation Learning
-* [GAIL](https://arxiv.org/abs/1606.03476) -> [gail/gail_gym.py](https://github.com/lx10077/rlpy/blob/master/gail/gail_gym.py)
+* [GAIL](https://arxiv.org/abs/1606.03476) -> [gail/gail_gym.py](https://github.com/lx10077/rlpy/blob/master/config/gail/gail_gym.py)
 ### To save trajectory
-If you want to do GAIL but without existing expert trajectories, [TrajGiver](https://github.com/lx10077/rlpy/blob/master/gail/traj_giver.py)
+If you want to do GAIL but without existing expert trajectories, [TrajGiver](https://github.com/lx10077/rlpy/blob/master/config/gail/traj_giver.py)
 will help us generate it. However, make sure the export policy has been generated and saved (i.e. train a TRPO or PPO agent
  on the same environment) such that TrajGiver would automatically first find the export directory, then load the policy
   network and running states, and eventually run the well-trained policy on desired environment.
 
 ### To do imitation learning
 ```
-python gail/gail_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-interval 50 --eval-model-interval 10
+python config/gail/gail_gym.py --env-name Hopper-v2 --max-iter-num 1000 --save-model-interval 50 --eval-model-interval 10
 ```
 
-## Results
-We test the code in three Mujoco environments with default parameters. GAIL is quite unstable and needs more iterations
-to reach comparable scores.
-<p align="middle">
-    <img src="asset/fig/HalfCheetah-v2d4d064d70601468b9e15462f1ccd9de8.png" width="290" />
-    <img src="asset/fig/Hopper-v246fa3ce8dc184a46ac6cc9fa9a09898a.png" width="290" />
-    <img src="asset/fig/Walker2d-v2a6b49e51389044739a1ee7b25db400b9.png" width="290" />
-</p>

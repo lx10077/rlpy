@@ -1,4 +1,5 @@
 from plotly.graph_objs import Scatter, Line
+from utils.torchs import *
 import numpy as np
 import plotly
 import os
@@ -24,6 +25,7 @@ class ActorCriticEvaluator(object):
         self.eval_rewards = [np.zeros(self.num_epsd)]  # elements are numpy array
         self.best_avg_rewards = -np.inf
         self.eval_env = self.env_factory(3333)
+        self.gpu = cfg["gpu"] if "gpu" in cfg else False
 
     def set_logger(self, log):
         self.log = log
@@ -31,9 +33,22 @@ class ActorCriticEvaluator(object):
             self.log.prepare_for_test()
         self.summary_dir = self.log.task.summary_dir
 
+    def place_models_on_cpu(self):
+        self.agent.place_models_on_cpu()
+
+    def place_models_on_gpu(self):
+        self.agent.place_models_on_gpu()
+
     def eval(self, iter_i, viz=False):
         assert self.log is not None
+        if use_gpu and self.gpu:
+            self.place_models_on_cpu()
+
         avg_rewards, eval_rewards = self._eval(self.num_epsd)
+
+        if use_gpu and self.gpu:
+            self.place_models_on_gpu()
+
         self.eval_iters.append(iter_i)
         self.eval_rewards.append(eval_rewards)
         title = "Test Rewards of " + self.id
@@ -50,8 +65,8 @@ class ActorCriticEvaluator(object):
             if self.agent.running_state is not None:
                 state = self.agent.running_state(state, update=False)
 
-            state = self.agent.tensor(state).unsqueeze(0)
-            action = self.policy.select_action(state)
+            state_var = self.agent.tensor(state).unsqueeze(0)
+            action = self.policy.select_action(state_var)
             next_state, reward, done, _ = self.eval_env.step(action)
             total_rewards[epsd_idx] += reward
             epsd_iters += 1

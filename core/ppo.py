@@ -55,7 +55,7 @@ class ClipPpoUpdater(object):
         advantages = batch["advantages"]
         value_targets = batch["value_targets"]
         with torch.no_grad():
-            fixed_log_probs = self.policy.get_log_prob(states, actions)
+            fixed_log_probs = self.policy.get_log_prob(states, actions).data
 
         num_sample = states.shape[0]
         optim_iter_num = int(np.ceil(num_sample / self.optim_batch_size))
