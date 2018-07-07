@@ -36,11 +36,20 @@ class ColorAssigner(object):
             return 'xkcd:' + choice
 
 
+def whether_choose(algo, algo_lst):
+    if len(algo_lst) == 0:
+        return False
+    for algo_name in algo_lst:
+        if algo_name in algo:
+            return True
+    return False
+
+
 def get_reward_from_event(args):
     reward_dict = dict()
     base_path = os.path.join(traindir, args.env)
     for file in glob.glob(os.path.join(base_path, args.env + '-*')):
-        algo = file.split('-')[-1].lower()
+        algo = '-'.join(file.split('/')[-1].split('-')[2:]).lower()
         event_file = os.path.join(file, 'train.events')
         events = os.listdir(event_file)
         rewards = {}
@@ -78,7 +87,7 @@ def get_reward_from_event(args):
     return reward_dict
 
 
-def plot_reward(reward_dict, title, length, dpi=300,
+def plot_reward(reward_dict, title, length, algos, dpi=300,
                 fig_basename=None, save=True, viz=False):
     try:
         plt.figure(figsize=(6, 6))
@@ -90,6 +99,11 @@ def plot_reward(reward_dict, title, length, dpi=300,
     ca = ColorAssigner()
 
     for algo, rewards in reward_dict.items():
+        whether_write = whether_choose(algo, algos)
+        if not whether_write:
+            continue
+        print(algo)
+
         rwds = {}
         for event_reward in rewards.values():
             rwds.update(event_reward)
@@ -128,11 +142,13 @@ def plot_reward(reward_dict, title, length, dpi=300,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', '--env-name', type=str, default='Ant-v2')
+    parser.add_argument('--env', '--env-name', type=str, default='Walker2d-v2')
+    parser.add_argument('--algo', '--algos', action="append", default=['trpo', 'adcv'], nargs="+")
     parser.add_argument('--save_data', action='store_true', default=False)
     parser.add_argument('--show_info', action='store_false', default=True)
+
     parser.add_argument('--x_len', type=int, default=3000)
     FLAGS = parser.parse_args()
 
     r_dict = get_reward_from_event(FLAGS)
-    plot_reward(r_dict, FLAGS.env, FLAGS.x_len, )
+    plot_reward(r_dict, FLAGS.env, FLAGS.x_len, algos=FLAGS.algo)

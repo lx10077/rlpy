@@ -60,7 +60,6 @@ class QuadraticVariate(Network):
         x = self.layers(x)
         action_mean = self.action_mean(x)
         action_log_std = self.action_log_std.expand_as(action_mean)
-        assert a.shape == action_mean.shape == action_log_std.shape
         variate = (a - action_mean) / action_log_std.exp()
         return -variate.pow(2).sum(1, keepdim=True)
 

@@ -42,6 +42,8 @@ parser.add_argument('--optim-adcv-iternum', type=int, default=3, metavar='N',
                     help='number of varuate updates in each timestep (default: 3)')
 parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
                     help='number of updates in each timestep (default: 5)')
+parser.add_argument('--opt-iterval', type=int, default=50, metavar='N',
+                    help='variate optim inerval (default: 50)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
                     help='number of value updates in each optim epoch (default: 1)')
 parser.add_argument('--num-threads', type=int, default=4, metavar='N',
@@ -60,6 +62,7 @@ parser.add_argument('--save-model-interval', type=int, default=100, metavar='N',
 parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
+
 
 
 def env_factory(thread_id):
@@ -103,7 +106,8 @@ optimizers = {'optimizer_policy': optimizer_policy,
               'optimizer_variate': optimizer_variate}
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("Adcv" + args.dis, env_factory, policy_net, value_net, cfg,
+exp_name = "Adcv-" + args.variate + "-" + args.opt + args.dis
+agent = ActorCriticAgent(exp_name, env_factory, policy_net, value_net, cfg,
                          running_state=running_state)
 adcv = VariateUpdater(nets, optimizers, cfg)
 evaluator = ActorCriticEvaluator(agent, cfg)

@@ -11,11 +11,11 @@ class VariateTrpoUpdater(TrpoUpdater):
 
     def get_policy_loss(self):
         log_probs = self.policy_net.get_log_prob(self.states, self.actions)
+        prob_ratio = torch.exp(log_probs - self.fixed_log_probs)
+        advantage_term = (self.variate(self.states, self.actions) - self.advantages) * prob_ratio
         action_mean, action_log_std = self.policy_net(self.states)
-        f = action_mean + action_log_std.exp() * self.xi
-        action_loss = self.variate(self.states, self.actions) - self.advantages - self.variate(self.states, f)
-        action_loss *= torch.exp(log_probs - self.fixed_log_probs)
-        return action_loss.mean()
+        variate_term = self.variate(self.states, action_mean + action_log_std.exp() * self.xi) * prob_ratio.data
+        return (advantage_term - variate_term).mean()
 
     def __call__(self, batch, log, *args, **kwargs):
         self.states = batch["states"]
@@ -61,6 +61,7 @@ class VariateUpdater(object):
         self.optimizer_policy = optimizers['optimizer_policy']
         self.optimizer_value = optimizers['optimizer_value']
         self.optimizer_variate = optimizers['optimizer_variate']
+        self.optim_variate_iterval = cfg["opt_iterval"]
         self.optim_variate_iternum = cfg['optim_variate_iternum'] if 'optim_variate_iternum' in cfg else 1
         self.gpu = cfg['gpu'] if 'gpu' in cfg else False
         self.suboptimizer = VariateTrpoUpdater(nets, cfg)
@@ -69,13 +70,21 @@ class VariateUpdater(object):
 
     def _get_min_var_grad(self):
         log_probs = self.policy.get_log_prob(self.states, self.actions)
+        prob_ratio = torch.exp(log_probs - self.fixed_log_probs)
+        advantage_term = (self.variate(self.states, self.actions) - self.advantages) * prob_ratio
         action_mean, action_log_std = self.policy(self.states)
-        f = action_mean + action_log_std.exp() * self.xi
-        action_loss = self.variate(self.states, self.actions) - self.advantages - self.variate(self.states, f)
-        action_loss = (action_loss * torch.exp(log_probs - self.fixed_log_probs)).mean()
+        variate_term = self.variate(self.states, action_mean + action_log_std.exp() * self.xi) * prob_ratio.data
+        action_loss = (advantage_term - variate_term).mean()
+
+        # log_probs = self.policy.get_log_prob(self.states, self.actions)
+        # action_mean, action_log_std = self.policy(self.states)
+        # f = action_mean + action_log_std.exp() * self.xi
+        # action_loss = (self.variate(self.states, self.actions) - self.advantages
+        #                ) * torch.exp(log_probs - self.fixed_log_probs)
+        # action_loss = (action_loss - self.variate(self.states, f)).mean()
 
         flat_grad = []
-        grads = torch.autograd.grad(action_loss, self.policy.parameters(), retain_graph=True)
+        grads = torch.autograd.grad(action_loss, self.policy.parameters())
         for grad in grads:
             grad.requires_grad = True
             flat_grad.append(grad.view(-1))
@@ -108,7 +117,7 @@ class VariateUpdater(object):
         where Phi_w = value + phi_w.
         """
         rewards = batch["rewards"]
-        variate_loss = (self.variate(self.states, self.actions) - rewards).mean()
+        variate_loss = (self.value(self.states) + self.variate(self.states, self.actions) - rewards).pow(2).mean()
         log["variate_loss/fit_q"] = variate_loss.item()
 
         self.optimizer_variate.zero_grad()
@@ -128,8 +137,9 @@ class VariateUpdater(object):
             self.xi = (self.actions - self.mu) / self.log_std.exp()
 
         log = self.suboptimizer(batch, log, *args, **kwargs)
-        for _ in range(self.optim_variate_iternum):
-            log = self.optimizer_way(batch, log)
+        if self.call % self.optim_variate_iterval == 1:
+            for _ in range(self.optim_variate_iternum):
+                log = self.optimizer_way(batch, log)
         return log
 
     def state_dict(self):

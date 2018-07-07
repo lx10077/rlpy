@@ -69,6 +69,10 @@ python config/gail/gail_gym.py --env-name Hopper-v2 --max-iter-num 1000  --gpu
 * [ADCV](http://arxiv.org/abs/1710.11198) -> [config/adcv/v_gym.py](https://github.com/lx10077/rlpy/blob/master/config/adcv/v_gym.py)
 ### Example
 ```
-python config/adcv/v_gym.py --env-name Walker2d-v2 --max-iter-num 1000 --variate linear --opt minvar --gpu
+python config/adcv/v_gym.py --env-name Walker2d-v2 --max-iter-num 1000 --variate mlp --opt minvar --gpu
 ```
+### Results
 
+<p align="middle">
+    <img src="asset/fig/adcv/Walker2d-v2ba94e8e2aacd4d65acc30cc832c0e711.png" width="290" />
+</p>
