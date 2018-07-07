@@ -64,6 +64,7 @@ class VariateUpdater(object):
         self.optim_variate_iternum = cfg['optim_variate_iternum'] if 'optim_variate_iternum' in cfg else 1
         self.gpu = cfg['gpu'] if 'gpu' in cfg else False
         self.suboptimizer = VariateTrpoUpdater(nets, cfg)
+        self.optimizer_way = self._fit_q if cfg['opt'] == 'fitq' else self._min_var
         self.call = 0
 
     def _get_min_var_grad(self):
@@ -85,9 +86,9 @@ class VariateUpdater(object):
         """
         Updating variate and value networks by minimizing least square of q, i.e.
 
-        min_w sum_t [ delta_policy log(policy(a_t | s_t)) * (Q(s_t, a_t) - phi_w(s_t, a_t)) +
-                      delta_policy policy(s_t, xi_t) delta_a phi_w(s_t, a_t)
-                     ] ** 2
+            min_w sum_t [ delta_policy log(policy(a_t | s_t)) * (Q(s_t, a_t) - phi_w(s_t, a_t)) +
+                          delta_policy policy(s_t, xi_t) delta_a phi_w(s_t, a_t)
+                         ] ** 2
         """
         variate_loss = self._get_min_var_grad()
         log["variate_loss/min_var"] = variate_loss.item()
@@ -128,7 +129,7 @@ class VariateUpdater(object):
 
         log = self.suboptimizer(batch, log, *args, **kwargs)
         for _ in range(self.optim_variate_iternum):
-            log = self._fit_q(batch, log)
+            log = self.optimizer_way(batch, log)
         return log
 
     def state_dict(self):

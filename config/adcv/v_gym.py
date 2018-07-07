@@ -17,7 +17,9 @@ parser = argparse.ArgumentParser(description='PyTorch ADCV example')
 parser.add_argument('--env-name', default="Hopper-v2", metavar='G',
                     help='name of the environment to run')
 parser.add_argument('--variate', type=str, choices=['linear', 'mlp', 'quadratic'], metavar='V',
-                    help='damping (default: 1e-2)')
+                    help='variate (default: mlp)')
+parser.add_argument('--opt', type=str, choices=['minvar', 'fitq'], metavar='V', default='fitq',
+                    help='variate optimization method (default: fitq)')
 parser.add_argument('--render', action='store_true', default=False,
                     help='render the environment')
 parser.add_argument('--log-std', type=float, default=0, metavar='G',
