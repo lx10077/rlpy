@@ -76,13 +76,6 @@ class VariateUpdater(object):
         variate_term = self.variate(self.states, action_mean + action_log_std.exp() * self.xi) * prob_ratio.data
         action_loss = (advantage_term - variate_term).mean()
 
-        # log_probs = self.policy.get_log_prob(self.states, self.actions)
-        # action_mean, action_log_std = self.policy(self.states)
-        # f = action_mean + action_log_std.exp() * self.xi
-        # action_loss = (self.variate(self.states, self.actions) - self.advantages
-        #                ) * torch.exp(log_probs - self.fixed_log_probs)
-        # action_loss = (action_loss - self.variate(self.states, f)).mean()
-
         flat_grad = []
         grads = torch.autograd.grad(action_loss, self.policy.parameters())
         for grad in grads:
