@@ -92,9 +92,10 @@ nets = {'policy': policy_net,
         'value': value_net,
         'discrim': discrim_net}
 
+device = torch.device("cuda" if use_gpu and args.gpu else "cpu")
 if use_gpu and args.gpu:
     for name, net in nets.items():
-        nets[name] = net.cuda()
+        nets[name] = net.to(device)
 
 # Define the optimizers of actor, critic and discriminator
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)

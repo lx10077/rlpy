@@ -76,14 +76,15 @@ running_state = ZFilter((state_dim,), clip=5)
 
 # Define actor, critic and their optimizers
 assert not is_disc_action
-policy_net = AdditiveDiagnormalPolicy(state_dim, action_dim, args.policy_num, args.alpha)
+policy_net = AdditiveDiagnormalPolicy(state_dim, action_dim, args.policy_num, args.alpha, args.gpu)
 temporary_policy = DiagnormalPolicy(state_dim, action_dim)
 value_net = ValueFunction(state_dim)
 
+device = torch.device("cuda" if use_gpu and args.gpu else "cpu")
 if use_gpu and args.gpu:
-    policy_net = policy_net.cuda()
-    temporary_policy = temporary_policy.cuda()
-    value_net = value_net.cuda()
+    policy_net = policy_net.to(device)
+    temporary_policy = temporary_policy.to(device)
+    value_net = value_net.to(device)
 
 optimizer_policy = torch.optim.Adam(temporary_policy.parameters(), lr=args.learning_rate)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)

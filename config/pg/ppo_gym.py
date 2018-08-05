@@ -75,10 +75,10 @@ else:
     policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
 value_net = ValueFunction(state_dim)
 
-
+device = torch.device("cuda" if use_gpu and args.gpu else "cpu")
 if use_gpu and args.gpu:
-    policy_net = policy_net.cuda()
-    value_net = value_net.cuda()
+    policy_net = policy_net.to(device)
+    value_net = value_net.to(device)
 
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)

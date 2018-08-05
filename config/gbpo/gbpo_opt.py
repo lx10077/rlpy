@@ -47,7 +47,7 @@ class GbpoUpdater(object):
 
         self.optimizer_policy.zero_grad()
         policy_surr.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 40)
+        torch.nn.utils.clip_grad_norm_(self.temporary_policy.parameters(), 40)
         self.optimizer_policy.step()
         return log
 
@@ -108,7 +108,7 @@ class GbpoUpdater(object):
                 log = self.update_value(states_b, value_targets_b, log)
                 log = self.update_policy(states_b, actions_b, advantages_b, fixed_log_probs_b, log)
 
-        new_param = get_flat_params_from(self.policy)
+        new_param = get_flat_params_from(self.temporary_policy)
         self.policy.add_policy(new_param)
 
         if self.policy.is_full:

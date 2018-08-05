@@ -5,12 +5,13 @@ import torch
 
 
 class AdditiveDiagnormalPolicy(DiagnormalPolicy):
-    def __init__(self, state_dim, action_dim, policy_num, alpha, **kwargs):
+    def __init__(self, state_dim, action_dim, policy_num, alpha, gpu=False, **kwargs):
         super(AdditiveDiagnormalPolicy, self).__init__(state_dim, action_dim, **kwargs)
         self.policy_num = policy_num
         assert policy_num >= 1
         self.policy_type = DiagnormalPolicy
         self.alpha = alpha
+        self.gpu = gpu
         self.update_time = 0
         self.policies = deque(maxlen=self.policy_num)
         new_policy = self.policy_type(self.state_dim, self.action_dim, **self.conf)
@@ -30,6 +31,8 @@ class AdditiveDiagnormalPolicy(DiagnormalPolicy):
 
     def generate_policy(self, flat_param=None):
         policy = self.policy_type(self.state_dim, self.action_dim, **self.conf)
+        if self.gpu and torch.cuda.is_available():
+            policy = policy.to('cuda')
         if flat_param is not None:
             set_flat_params_to(policy, flat_param)
         return policy

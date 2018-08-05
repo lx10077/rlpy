@@ -72,9 +72,10 @@ else:
     policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
 value_net = ValueFunction(state_dim)
 
+device = torch.device("cuda" if use_gpu and args.gpu else "cpu")
 if use_gpu and args.gpu:
-    policy_net = policy_net.cuda()
-    value_net = value_net.cuda()
+    policy_net = policy_net.to(device)
+    value_net = value_net.to(device)
 
 running_state = ZFilter((state_dim,), clip=5)
 
