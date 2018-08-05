@@ -69,10 +69,10 @@ class AdditiveDiagnormalPolicy(DiagnormalPolicy):
             model.load_state_dict(state_dict[key])
             self.policies.append(model)
 
-    def cuda(self):
-        for i in range(len(self.policies)):
-            self.policies[i] = self.policies[i].cuda()
-
-    def cpu(self):
-        for i in range(len(self.policies)):
-            self.policies[i] = self.policies[i].cpu()
+    def to(self, device):
+        if device.type == 'cuda':
+            for i in range(len(self.policies)):
+                self.policies[i] = self.policies[i].to(torch.device('cuda'))
+        elif device.type == 'cpu':
+            for i in range(len(self.policies)):
+                self.policies[i] = self.policies[i].to(torch.device('cpu'))
