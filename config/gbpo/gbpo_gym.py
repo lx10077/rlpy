@@ -19,9 +19,9 @@ parser.add_argument('--env-name', default="Hopper-v2", metavar='G',
                     help='name of the environment to run')
 parser.add_argument('--model-path', metavar='G',
                     help='path of pre-trained model')
-parser.add_argument('--policy-num', type=int, default=10, metavar='N',
-                    help='number of policy (default: 2)')
-parser.add_argument('--alpha', type=float, default=0.1, metavar='N',
+parser.add_argument('--policy-num', type=int, default=5, metavar='N',
+                    help='number of policy (default: 5)')
+parser.add_argument('--alpha', type=float, default=0.5, metavar='N',
                     help='interpolated coefficient for CPI')
 parser.add_argument('--render', action='store_true', default=False,
                     help='render the environment')
@@ -58,7 +58,7 @@ parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 1)')
 parser.add_argument('--save-model-interval', type=int, default=100, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
-parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
+parser.add_argument('--eval-model-interval', type=int, default=10, metavar='N',
                     help="interval between saving model (default: 0, means don't save)")
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -89,8 +89,9 @@ optimizer_policy = torch.optim.Adam(temporary_policy.parameters(), lr=args.learn
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("GbPPO" + args.dis, env_factory, policy_net, value_net, cfg, running_state=running_state)
+agent = ActorCriticAgent("GbPPO" + args.dis, env_factory, temporary_policy,
+                         value_net, cfg, running_state=running_state)
 gbpo_ppo = GbpoUpdater(policy_net, temporary_policy, value_net, optimizer_policy, optimizer_value, cfg)
-evaluator = ActorCriticEvaluator(agent, cfg)
+evaluator = ActorCriticEvaluator(agent, cfg, policy=policy_net)
 trainer = ActorCriticTrainer(agent, gbpo_ppo, cfg, evaluator)
 trainer.start()

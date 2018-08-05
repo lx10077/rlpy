@@ -6,7 +6,7 @@ import os
 
 
 class ActorCriticEvaluator(object):
-    def __init__(self, agent, cfg):
+    def __init__(self, agent, cfg, policy=None):
         self.agent = agent
         self.cfg = cfg
         self.log = None
@@ -15,7 +15,7 @@ class ActorCriticEvaluator(object):
         # get some components from the agent
         self.env_factory = self.agent.env_factory
         self.tensor = self.agent.tensor
-        self.policy = self.agent.policy
+        self.policy = policy if policy else self.agent.policy
         self.id = self.agent.id
 
         # parameters for evaluation
