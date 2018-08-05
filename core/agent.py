@@ -103,14 +103,14 @@ class ActorCriticAgent(object):
         self.model_dict.update({name: model})
 
     def place_models_on_cpu(self):
-        self.policy.cpu()
+        self.policy.to(torch.device("cpu"))
         if 'discrim' in self.model_dict:
-            self.model_dict['discrim'] = self.model_dict['discrim'].cpu()
+            self.model_dict['discrim'] = self.model_dict['discrim'].to(torch.device("cpu"))
 
     def place_models_on_gpu(self):
-        self.policy.cuda()
+        self.policy.to(torch.device("cuda"))
         if 'discrim' in self.model_dict:
-            self.model_dict['discrim'] = self.model_dict['discrim'].cuda()
+            self.model_dict['discrim'] = self.model_dict['discrim'].to(torch.device("cuda"))
 
 
 # ====================================================================================== #

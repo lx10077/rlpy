@@ -32,7 +32,7 @@ class AdditiveDiagnormalPolicy(DiagnormalPolicy):
     def generate_policy(self, flat_param=None):
         policy = self.policy_type(self.state_dim, self.action_dim, **self.conf)
         if self.gpu and torch.cuda.is_available():
-            policy = policy.to('cuda')
+            policy = policy.to(torch.device("cuda"))
         if flat_param is not None:
             set_flat_params_to(policy, flat_param)
         return policy
