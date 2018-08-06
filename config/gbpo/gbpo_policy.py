@@ -76,3 +76,4 @@ class AdditiveDiagnormalPolicy(DiagnormalPolicy):
         elif device.type == 'cpu':
             for i in range(len(self.policies)):
                 self.policies[i] = self.policies[i].to(torch.device('cpu'))
+        return self

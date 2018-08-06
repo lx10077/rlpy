@@ -53,7 +53,7 @@ We test the policy gradient codes in these Mujoco environments with default para
 
 
 ## Generative Adversarial Imitation Learning
-* [GAIL](https://arxiv.org/abs/1606.03476) -> [conig/gail/gail_gym.py](https://github.com/lx10077/rlpy/blob/master/config/gail/gail_gym.py)
+* [GAIL](https://arxiv.org/abs/1606.03476) -> [config/gail/gail_gym.py](https://github.com/lx10077/rlpy/blob/master/config/gail/gail_gym.py)
 ### To save trajectory
 If you want to do GAIL but without existing expert trajectories, [TrajGiver](https://github.com/lx10077/rlpy/blob/master/config/gail/traj_giver.py)
 will help us generate it. However, make sure the export policy has been generated and saved (i.e. train a TRPO or PPO agent
