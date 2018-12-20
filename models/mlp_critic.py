@@ -4,6 +4,23 @@ from models.helper_net import *
 # ====================================================================================== #
 # Baseline functions
 # ====================================================================================== #
+class QFunction(Network):
+    def __init__(self, state_action_dim, **kwargs):
+        self.conf = {"activate": "tanh"}
+        self.conf.update(kwargs)
+        super(QFunction, self).__init__(state_action_dim, self.conf)
+
+        self.value_head = nn.Linear(self.last_dim, 1)
+        self.value_head.weight.data.mul_(0.1)
+        self.value_head.bias.data.mul_(0.0)
+
+    def forward(self, x, a):
+        assert x.size()[0] == a.size()[0]
+        x = self.layers(torch.cat((x, a), 1))
+        value = self.value_head(x)
+        return value
+
+
 class ValueFunction(Network):
     def __init__(self, state_dim, **kwargs):
         self.conf = {"activate": "tanh"}
