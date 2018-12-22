@@ -5,8 +5,8 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from utils import *
-from models.mlp_policy import DiagnormalPolicy, DiscretePolicy
-from models.mlp_critic import ValueFunction, QFunction
+from models.mlp_policy import DiagnormalPolicy
+from models.mlp_critic import ValueFunction
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticEvaluator
@@ -27,15 +27,15 @@ parser.add_argument('--tau', type=float, default=0.95, metavar='G',
                     help='gae (default: 0.95)')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='use gpu(default: False)')
-parser.add_argument('--l2-reg', type=float, default=0, metavar='G',
+parser.add_argument('--lambd', type=float, default=2e-3, metavar='G',
+                    help='weight for entropy (default: 2e-3)')
+parser.add_argument('--l2-reg', type=float, default=1e-3, metavar='G',
                     help='l2 regularization regression (default: 1e-3)')
 parser.add_argument('--learning-rate', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 3e-4)')
 parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
                     help='number of updates in each timestep (default: 5)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
-                    help='number of value updates in each optim epoch (default: 1)')
-parser.add_argument('--optim-qvalue-iternum', type=int, default=1, metavar='N',
                     help='number of value updates in each optim epoch (default: 1)')
 parser.add_argument('--optim-batch-size', type=int, default=256, metavar='N',
                     help='optim batch size per PPO update (default: 256)')
@@ -74,23 +74,19 @@ running_state = ZFilter((state_dim,), clip=5)
 assert not is_disc_action
 policy_net = DiagnormalPolicy(state_dim, action_dim, log_std=args.log_std)
 value_net = ValueFunction(state_dim)
-qvalue_net = QFunction(state_dim + action_dim)
 
 device = torch.device("cuda" if use_gpu and args.gpu else "cpu")
 if use_gpu and args.gpu:
     policy_net = policy_net.to(device)
     value_net = value_net.to(device)
-    qvalue_net = qvalue_net.to(device)
 
 optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_rate)
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
-optimizer_qvalue = torch.optim.Adam(qvalue_net.parameters(), lr=args.learning_rate)
 
 cfg = Cfg(parse=args)
 agent = ActorCriticAgent("Sac" + args.dis, env_factory, policy_net, value_net, cfg,
                          running_state=running_state)
-sac = SacUpdater(policy_net, value_net, qvalue_net,
-                 optimizer_policy, optimizer_value, optimizer_qvalue, cfg)
+sac = SacUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
 evaluator = ActorCriticEvaluator(agent, cfg)
 trainer = ActorCriticTrainer(agent, sac, cfg, evaluator)
 trainer.start()

@@ -64,7 +64,6 @@ parser.add_argument('--eval-model-interval', type=int, default=0, metavar='N',
 args = parser.parse_args()
 
 
-
 def env_factory(thread_id):
     env = gym.make(args.env_name)
     env.seed(args.seed + thread_id)
