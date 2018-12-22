@@ -1,5 +1,4 @@
 from utils.torchs import *
-from IPython import embed
 
 
 class SacUpdater(object):
@@ -40,12 +39,14 @@ class SacUpdater(object):
     def update_policy(self, states, actions, advantages, fixed_log_probs, log):
         log_probs = self.policy.get_log_prob(states, actions)
         ratio = torch.exp(log_probs - fixed_log_probs)
-        entropy = self.policy.get_entropy(states)
-        policy_loss = - (ratio * advantages).mean(0) - self.lambd * entropy.mean(0)
-        log["policy_loss"] = policy_loss.item()
+        surr1 = ratio * advantages
+        surr2 = torch.clamp(ratio, 1.0 - self.curr_clip_epsilon, 1.0 + self.curr_clip_epsilon) * advantages
+        policy_surr = -torch.min(surr1, surr2).mean()
+        # policy_surr = -torch.cat([surr1, surr2], 1).min(1)[0].mean()
+        log["policy_surr"] = policy_surr.item()
 
         self.optimizer_policy.zero_grad()
-        policy_loss.backward()
+        policy_surr.backward()
         torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 40)
         self.optimizer_policy.step()
         return log
