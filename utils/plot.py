@@ -94,6 +94,8 @@ def plot_reward(reward_dict, title, length, algos, dpi=300,
     except Exception as e:
         print(Exception(e))
 
+    algos = algos[0]
+    assert isinstance(algos, list) and len(algos) > 0
     reward_dict = OrderedDict(sorted(reward_dict.items()))
     MEAN_LENGTH = length // 10
     ca = ColorAssigner()
@@ -143,11 +145,11 @@ def plot_reward(reward_dict, title, length, algos, dpi=300,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', '--env-name', type=str, default='Walker2d-v2')
-    parser.add_argument('--algo', '--algos', action="append", default=['trpo', 'adcv'], nargs="+")
+    parser.add_argument('--algo', '--algos', action="append", nargs="+")
     parser.add_argument('--save_data', action='store_true', default=False)
     parser.add_argument('--show_info', action='store_false', default=True)
 
-    parser.add_argument('--x_len', type=int, default=3000)
+    parser.add_argument('--x_len', type=int, default=1000)
     FLAGS = parser.parse_args()
 
     r_dict = get_reward_from_event(FLAGS)

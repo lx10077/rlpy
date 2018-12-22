@@ -14,7 +14,7 @@ export OMP_NUM_THREADS=1
 All examples are placed under `config` file.
 - After training several agents on one environment, you can plot the training process in one figure by
 ```
-python utils/plot.py --env-name <ENVIRONMENT_NAME> --x_len <ITERATION_NUM> --save_data
+python utils/plot.py --env-name <ENVIRONMENT_NAME> --algo <ALGORITHM1,...,ALGORITHMn>  --x_len <ITERATION_NUM> --save_data
 ```
 
 ## Policy Gradient Methods
