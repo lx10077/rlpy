@@ -48,7 +48,7 @@ parser.add_argument('--seed', type=int, default=2, metavar='N',
 parser.add_argument('--dis', type=str, default='')
 parser.add_argument('--min-batch-size', type=int, default=1000, metavar='N',
                     help='minimal batch size per PPO update (default: 100)')
-parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
+parser.add_argument('--max-iter-num', type=int, default=1000, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 1)')
@@ -84,7 +84,8 @@ optimizer_policy = torch.optim.Adam(policy_net.parameters(), lr=args.learning_ra
 optimizer_value = torch.optim.Adam(value_net.parameters(), lr=args.learning_rate)
 
 cfg = Cfg(parse=args)
-agent = ActorCriticAgent("Sac" + args.dis, env_factory, policy_net, value_net, cfg,
+cfg["estimate_adv_and_target"] = False
+agent = ActorCriticAgent("TSac" + args.dis, env_factory, policy_net, value_net, cfg,
                          running_state=running_state)
 sac = SacUpdater(policy_net, value_net, optimizer_policy, optimizer_value, cfg)
 evaluator = ActorCriticEvaluator(agent, cfg)

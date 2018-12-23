@@ -76,7 +76,7 @@ class ActorCriticAgent(object):
         log['action_max'] = np.max(np.vstack(batchs.action), axis=0)
         return batchs, log
 
-    def batch2tensor(self, batch):
+    def batch2tensor(self, batch, estimate_adv_and_target=True):
         states = np_to_tensor(np.stack(batch.state))
         actions = np_to_tensor(np.stack(batch.action))
         rewards = np_to_tensor(np.stack(batch.reward))
@@ -86,17 +86,18 @@ class ActorCriticAgent(object):
         with torch.no_grad():
             values = self.value(states)
 
-        # get advantage estimation from the trajectories
-        advantages, value_targets = estimate_advantages(rewards, masks, values,
-                                                        self.gamma, self.tau, use_gpu & self.gpu)
-
         batch = dict()
         batch["states"] = states
         batch["actions"] = actions
         batch["rewards"] = rewards
         batch["masks"] = masks
-        batch["advantages"] = advantages
-        batch["value_targets"] = value_targets
+
+        # get advantage estimation from the trajectories
+        if estimate_adv_and_target:
+            advantages, value_targets = estimate_advantages(rewards, masks, values,
+                                                            self.gamma, self.tau, use_gpu & self.gpu)
+            batch["advantages"] = advantages
+            batch["value_targets"] = value_targets
         return batch
 
     def add_model(self, name, model):

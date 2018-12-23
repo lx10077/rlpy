@@ -41,9 +41,9 @@ parser.add_argument('--num-threads', type=int, default=4, metavar='N',
 parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
 parser.add_argument('--dis', type=str, default='')
-parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
+parser.add_argument('--min-batch-size', type=int, default=1000, metavar='N',
                     help='minimal batch size per A2C update (default: 2048)')
-parser.add_argument('--max-iter-num', type=int, default=500, metavar='N',
+parser.add_argument('--max-iter-num', type=int, default=1000, metavar='N',
                     help='maximal number of main iterations (default: 500)')
 parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='interval between training status logs (default: 1)')

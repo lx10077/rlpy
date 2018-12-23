@@ -20,6 +20,7 @@ class ActorCriticTrainer(object):
         self.gpu = cfg["gpu"] if "gpu" in cfg else False
         self.tau = cfg["tau"]
         self.gamma = cfg["gamma"]
+        self.estimate_adv_and_target = False if "estimate_adv_and_target" in cfg else True
         self.min_batch_size = cfg["min_batch_size"]
         self.max_iter_num = cfg["max_iter_num"]
         self.min_batch_size = cfg["min_batch_size"]
@@ -36,7 +37,7 @@ class ActorCriticTrainer(object):
         while self.iter_i < self.max_iter_num:
 
             batch, train_log = self.agent.collect_samples(self.min_batch_size)
-            batch = self.agent.batch2tensor(batch)
+            batch = self.agent.batch2tensor(batch, self.estimate_adv_and_target)
             t0 = time.time()
             train_log = self.updater(batch, train_log, self.iter_i)
             t1 = time.time()
