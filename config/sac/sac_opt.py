@@ -20,10 +20,10 @@ class SacUpdater(object):
         self.optim_batch_size = cfg["optim_batch_size"]
         self.optim_value_iternum = cfg["optim_value_iternum"]
 
-    def update_value(self, states, values_targets, fixed_log_probs, log):
+    def update_value(self, states, values_targets, log):
         for _ in range(self.optim_value_iternum):
             values_pred = self.value(states)
-            value_loss = (values_pred - values_targets + fixed_log_probs).pow(2).mean()
+            value_loss = (values_pred - values_targets).pow(2).mean()
             log["value_loss"] = value_loss.item()
 
             # weight decay
@@ -42,7 +42,9 @@ class SacUpdater(object):
         ratio = torch.exp(log_probs - fixed_log_probs)
         surr1 = ratio * advantages
         surr2 = torch.clamp(ratio, 1.0 - self.curr_clip_epsilon, 1.0 + self.curr_clip_epsilon) * advantages
-        policy_surr = -torch.min(surr1, surr2).mean() - self.lambd * self.policy.get_entropy(states).mean()
+        entropy = self.policy.get_entropy(states).mean()
+        log["entropy"] = entropy.item()
+        policy_surr = - torch.min(surr1, surr2).mean() - self.lambd * entropy
         # policy_surr = -torch.cat([surr1, surr2], 1).min(1)[0].mean()
         log["policy_surr"] = policy_surr.item()
 
@@ -58,17 +60,19 @@ class SacUpdater(object):
         rewards = batch["rewards"]
         masks = batch["masks"]
         with torch.no_grad():
-            values = self.value(states)
+            values = self.value(states).data
             fixed_log_probs = self.policy.get_log_prob(states, actions).data
-        composite_rewards = rewards - self.lambd * fixed_log_probs
-        advantages, value_targets = estimate_advantages(composite_rewards, masks, values, self.cfg["gamma"],
-                                                        self.cfg["tau"], use_gpu & self.cfg["gpu"])
+            composite_rewards = rewards - self.lambd * fixed_log_probs.view(-1)
+            advantages, value_targets = estimate_advantages(composite_rewards, masks, values, self.cfg["gamma"],
+                                                            self.cfg["tau"], use_gpu & self.cfg["gpu"])
 
         num_sample = states.shape[0]
         optim_iter_num = int(np.ceil(num_sample / self.optim_batch_size))
-
         lr_mult = max(1.0 - float(iter_i) / self.max_iter_num, 0)
+        self.optimizer_policy.lr = self.lr * lr_mult
+        self.optimizer_value.lr = self.lr * lr_mult
         self.curr_clip_epsilon = self.clip_epsilon * lr_mult
+        self.lambd = self.lambd * lr_mult
         log["clip_eps"] = self.curr_clip_epsilon
 
         for _ in range(self.optim_epochs):

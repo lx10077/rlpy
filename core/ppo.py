@@ -45,7 +45,7 @@ class ClipPpoUpdater(object):
 
         self.optimizer_policy.zero_grad()
         policy_surr.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 40)
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
         self.optimizer_policy.step()
         return log
 
@@ -59,7 +59,6 @@ class ClipPpoUpdater(object):
 
         num_sample = states.shape[0]
         optim_iter_num = int(np.ceil(num_sample / self.optim_batch_size))
-
         lr_mult = max(1.0 - float(iter_i) / self.max_iter_num, 0)
         self.optimizer_policy.lr = self.lr * lr_mult
         self.optimizer_value.lr = self.lr * lr_mult

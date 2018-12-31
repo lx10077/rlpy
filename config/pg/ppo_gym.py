@@ -31,12 +31,12 @@ parser.add_argument('--l2-reg', type=float, default=1e-3, metavar='G',
                     help='l2 regularization regression (default: 1e-3)')
 parser.add_argument('--learning-rate', type=float, default=3e-4, metavar='G',
                     help='learning rate (default: 3e-4)')
-parser.add_argument('--optim-epochs', type=int, default=5, metavar='N',
-                    help='number of updates in each timestep (default: 5)')
+parser.add_argument('--optim-epochs', type=int, default=10, metavar='N',
+                    help='number of updates in each timestep (default: 10)')
 parser.add_argument('--optim-value-iternum', type=int, default=1, metavar='N',
                     help='number of value updates in each optim epoch (default: 1)')
-parser.add_argument('--optim-batch-size', type=int, default=256, metavar='N',
-                    help='optim batch size per PPO update (default: 256)')
+parser.add_argument('--optim-batch-size', type=int, default=64, metavar='N',
+                    help='optim batch size per PPO update (default: 64)')
 parser.add_argument('--clip-epsilon', type=float, default=0.2, metavar='N',
                     help='clipping epsilon for PPO')
 parser.add_argument('--num-threads', type=int, default=4, metavar='N',
@@ -44,7 +44,7 @@ parser.add_argument('--num-threads', type=int, default=4, metavar='N',
 parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
 parser.add_argument('--dis', type=str, default='')
-parser.add_argument('--min-batch-size', type=int, default=1000, metavar='N',
+parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per PPO update (default: 2048)')
 parser.add_argument('--max-iter-num', type=int, default=1000, metavar='N',
                     help='maximal number of main iterations (default: 500)')
