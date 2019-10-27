@@ -5,7 +5,7 @@ import math
 
 
 class FTrpoUpdater(object):
-    def __init__(self, policy_net, value_net, cfg, use_fim=False):
+    def __init__(self, policy_net, value_net, cfg):
         self.policy_net = policy_net
         self.value_net = value_net
         self.gpu = cfg["gpu"]
@@ -14,7 +14,6 @@ class FTrpoUpdater(object):
         self.l2_reg = cfg["l2_reg"]
         self.nsteps = cfg["nsteps"] if "nsteps" in cfg else 10
         self.alpha = cfg["alpha"]
-        self.use_fim = use_fim
         self.Fvp = self.fvp_direct
 
     def get_value_loss(self, flat_params):
@@ -121,6 +120,7 @@ class FTrpoUpdater(object):
         stepdir = self.conjugate_gradients(-loss_grad)
 
         shs = 0.5 * (stepdir.dot(self.Fvp(stepdir)))
+        log["shs"] = shs.item()
         lm = math.sqrt(self.max_kl / shs)
         fullstep = stepdir * lm
         expected_improve = -loss_grad.dot(fullstep)
@@ -135,12 +135,11 @@ class FTrpoUpdater(object):
                 "damping": self.damping,
                 "l2_reg": self.l2_reg,
                 "nsteps": self.nsteps,
-                "use_fim": self.use_fim}
+                "alpha": self.alpha}
 
     def load_state_dict(self, state_dict):
         self.max_kl = state_dict["max_kl"]
         self.damping = state_dict["damping"]
         self.l2_reg = state_dict["l2_reg"]
         self.nsteps = state_dict["nsteps"]
-        self.use_fim = state_dict["use_fim"]
-        self.Fvp = self.fvp_fim if self.use_fim else self.fvp_direct
+        self.alpha = state_dict["alpha"]

@@ -10,7 +10,7 @@ from models.mlp_critic import ValueFunction
 from core.agent import ActorCriticAgent
 from core.trainer import ActorCriticTrainer
 from core.evaluator import ActorCriticEvaluator
-from config.sac.sac_opt import SacUpdater
+from config.sac.sac_pcl_opt import SacUpdater
 
 parser = argparse.ArgumentParser(description='PyTorch ERPPO example')
 parser.add_argument('--env-name', default="Hopper-v2", metavar='G',
@@ -46,7 +46,7 @@ parser.add_argument('--num-threads', type=int, default=4, metavar='N',
 parser.add_argument('--seed', type=int, default=2, metavar='N',
                     help='random seed (default: 1)')
 parser.add_argument('--dis', type=str, default='')
-parser.add_argument('--min-batch-size', type=int, default=1000, metavar='N',
+parser.add_argument('--min-batch-size', type=int, default=2048, metavar='N',
                     help='minimal batch size per PPO update (default: 100)')
 parser.add_argument('--max-iter-num', type=int, default=1000, metavar='N',
                     help='maximal number of main iterations (default: 500)')

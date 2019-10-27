@@ -127,6 +127,7 @@ class TrpoUpdater(object):
         stepdir = self.conjugate_gradients(-loss_grad)
 
         shs = 0.5 * (stepdir.dot(self.Fvp(stepdir)))
+        log["shs"] = shs.item()
         lm = math.sqrt(self.max_kl / shs)
         fullstep = stepdir * lm
         expected_improve = -loss_grad.dot(fullstep)

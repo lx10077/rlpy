@@ -1,8 +1,31 @@
 from utils.torchs import *
-from utils.tools import estimate_advantages
 
 
-class SacUpdater(object):
+def estimate_advantages(rewards, masks, values, gamma, tau, use_gpu):
+    if use_gpu:
+        rewards, masks, values = rewards.cpu(), masks.cpu(), values.cpu()
+    tensor_type = type(rewards)
+    deltas = tensor_type(rewards.size(0), 1)
+    advantages = tensor_type(rewards.size(0), 1)
+
+    prev_value = 0
+    prev_advantage = 0
+    for i in reversed(range(rewards.size(0))):
+        deltas[i] = rewards[i] + gamma * prev_value * masks[i] - values[i]
+        advantages[i] = deltas[i] + gamma * tau * prev_advantage * masks[i]
+
+        prev_value = values[i, 0]
+        prev_advantage = advantages[i, 0]
+
+    returns = values + advantages
+    advantages = (advantages - advantages.mean()) / advantages.std()
+
+    if use_gpu:
+        advantages, returns = advantages.cuda(), returns.cuda()
+    return advantages, returns
+
+
+class SacLcUpdater(object):
     def __init__(self, policy_net, value_net, optimizer_policy, optimizer_value, cfg):
         self.policy = policy_net
         self.value = value_net
@@ -60,7 +83,7 @@ class SacUpdater(object):
         rewards = batch["rewards"]
         masks = batch["masks"]
         with torch.no_grad():
-            values = self.value(states).data
+            values = self.value(states)
             fixed_log_probs = self.policy.get_log_prob(states, actions).data
             composite_rewards = rewards - self.lambd * fixed_log_probs.view(-1)
             advantages, value_targets = estimate_advantages(composite_rewards, masks, values, self.cfg["gamma"],

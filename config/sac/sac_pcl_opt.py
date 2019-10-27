@@ -59,15 +59,12 @@ class SacUpdater(object):
         actions = batch["actions"]
         rewards = batch["rewards"]
         masks = batch["masks"]
-        with torch.no_grad():
-            values = self.value(states).data
-            fixed_log_probs = self.policy.get_log_prob(states, actions).data
-            composite_rewards = rewards - self.lambd * fixed_log_probs.view(-1)
-            advantages, value_targets = estimate_advantages(composite_rewards, masks, values, self.cfg["gamma"],
-                                                            self.cfg["tau"], use_gpu & self.cfg["gpu"])
+        values = self.value(states)
+        fixed_log_probs = self.policy.get_log_prob(states, actions).detach()
+        composite_rewards = rewards - self.lambd * fixed_log_probs.view(-1)
+        advantages, value_targets = estimate_advantages(composite_rewards, masks, values, self.cfg["gamma"],
+                                                        self.cfg["tau"], use_gpu & self.cfg["gpu"])
 
-        num_sample = states.shape[0]
-        optim_iter_num = int(np.ceil(num_sample / self.optim_batch_size))
         lr_mult = max(1.0 - float(iter_i) / self.max_iter_num, 0)
         self.optimizer_policy.lr = self.lr * lr_mult
         self.optimizer_value.lr = self.lr * lr_mult
@@ -76,25 +73,8 @@ class SacUpdater(object):
         log["clip_eps"] = self.curr_clip_epsilon
 
         for _ in range(self.optim_epochs):
-            perm = np.arange(num_sample)
-            np.random.shuffle(perm)
-            perm = np_to_tensor(perm).long()
-            if use_gpu and self.cfg["gpu"]:
-                perm = perm.cuda()
-
-            # it is important to shuffle samples
-            states, actions, value_targets, advantages, fixed_log_probs = \
-                states[perm], actions[perm], value_targets[perm], advantages[perm], fixed_log_probs[perm]
-
-            for i in range(optim_iter_num):
-                # do minibatch optimization
-                ind = slice(i * self.optim_batch_size, min((i + 1) * self.optim_batch_size, num_sample))
-                states_b, actions_b, advantages_b, value_targets_b, fixed_log_probs_b = \
-                    states[ind], actions[ind], advantages[ind], value_targets[ind], fixed_log_probs[ind]
-
-                log = self.update_value(states_b, value_targets_b, log)
-                log = self.update_policy(states_b, actions_b, advantages_b, fixed_log_probs_b, log)
-
+            log = self.update_value(values, value_targets, log)
+            log = self.update_policy(states, actions, advantages, fixed_log_probs, log)
         return log
 
     def state_dict(self):
